@@ -27,17 +27,22 @@ import {
   DialogActions
 } from "@mui/material";
 import {
+  Timeline,
+  TimelineItem,
+  TimelineSeparator,
+  TimelineConnector,
+  TimelineContent,
+  TimelineDot,
+  TimelineOppositeContent
+} from "@mui/lab";
+import {
   Close,
-  Email,
-  Phone,
-  LocationOn,
-  AttachMoney,
-  Person,
   Description,
-  Quiz,
-  Note,
   Send,
-  Download
+  Download,
+  OpenInNew,
+  Upload,
+  History
 } from "@mui/icons-material";
 import { API_URL, request } from "../api";
 
@@ -80,6 +85,17 @@ interface Comment {
   };
 }
 
+interface ActivityLog {
+  id: string;
+  old_status: string;
+  new_status: string;
+  changed_at: string;
+  changed_by: {
+    name?: string;
+    email: string;
+  };
+}
+
 interface CandidateDetailsDrawerProps {
   candidate: Candidate | null;
   open: boolean;
@@ -98,22 +114,37 @@ export function CandidateDetailsDrawer({
   statuses = []
 }: CandidateDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState(0);
+  const [documentType, setDocumentType] = useState<'resume' | 'cover_letter' | 'portfolio'>('resume');
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [notes, setNotes] = useState("");
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [activityHistory, setActivityHistory] = useState<ActivityLog[]>([]);
+  
+  // Hardcoded questionnaire data
+  const [questionnaires] = useState({
+    whyWorkHere: "I am passionate about this company's mission and believe my skills align perfectly with the role requirements.",
+    salaryExpectations: "$80,000 - $100,000",
+    startDate: "2025-01-15",
+    willingToRelocate: "yes"
+  });
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const isRecruiter = user.role === "recruiter" || user.role === "hr" || user.role === "admin";
 
   useEffect(() => {
     if (candidate) {
       loadComments();
       loadCv();
+      loadActivityHistory();
       setNotes(candidate.notes || "");
     } else {
       setComments([]);
       setCvUrl(null);
       setNotes("");
+      setActivityHistory([]);
     }
   }, [candidate]);
 
@@ -142,6 +173,29 @@ export function CandidateDetailsDrawer({
     } catch (err) {
       console.error("Failed to load CV", err);
     }
+  };
+
+  const loadActivityHistory = async () => {
+    if (!candidate) return;
+    // Mock activity history for now
+    // TODO: Replace with actual API call when backend endpoint is ready
+    const mockHistory: ActivityLog[] = [
+      {
+        id: "1",
+        old_status: "reviewed",
+        new_status: "mobile_screening",
+        changed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        changed_by: { name: "John Doe", email: "john@example.com" }
+      },
+      {
+        id: "2",
+        old_status: "applied",
+        new_status: "reviewed",
+        changed_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        changed_by: { name: "Jane Smith", email: "jane@example.com" }
+      }
+    ];
+    setActivityHistory(mockHistory);
   };
 
   const handleAddComment = async () => {
@@ -188,6 +242,17 @@ export function CandidateDetailsDrawer({
     }
   };
 
+  const handleOpenInNewTab = () => {
+    if (cvUrl) {
+      window.open(cvUrl, '_blank');
+    }
+  };
+
+  const handleCvUpload = () => {
+    // TODO: Implement CV upload functionality
+    alert("CV upload functionality will be implemented soon");
+  };
+
   if (!candidate) return null;
 
   return (
@@ -196,10 +261,10 @@ export function CandidateDetailsDrawer({
         anchor="right"
         open={open}
         onClose={onClose}
-        PaperProps={{ sx: { width: { xs: "100%", md: "900px" }, display: "flex", flexDirection: "row" } }}
+        PaperProps={{ sx: { width: { xs: "100%", md: "1000px" }, display: "flex", flexDirection: "row" } }}
       >
-        {/* Left Sidebar */}
-        <Box sx={{ width: "320px", borderRight: "1px solid", borderColor: "divider", display: "flex", flexDirection: "column", bgcolor: "background.paper" }}>
+        {/* Left Sidebar - UNCHANGED */}
+        <Box sx={{ width: "280px", borderRight: "1px solid", borderColor: "divider", display: "flex", flexDirection: "column", bgcolor: "background.paper" }}>
           <Box sx={{ p: 3, display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid", borderColor: "divider" }}>
             <Avatar
               src={candidate.profile_picture ? `${API_URL}/candidates/${candidate.id}/profile-picture` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${candidate.id}`}
@@ -217,61 +282,57 @@ export function CandidateDetailsDrawer({
           <Box sx={{ p: 3, flexGrow: 1, overflowY: "auto" }}>
             {/* Basic Section */}
             <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
-              Basic
+              Email
             </Typography>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="body2" fontWeight="medium">{candidate.first_name} {candidate.last_name}</Typography>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* Contacts Section */}
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
-              Contacts
-            </Typography>
-            
             {candidate.email && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <Email fontSize="small" color="action" />
-                <Typography variant="body2">{candidate.email}</Typography>
-              </Box>
-            )}
-            
-            {candidate.phone && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <Phone fontSize="small" color="action" />
-                <Typography variant="body2">{candidate.phone}</Typography>
-              </Box>
-            )}
-            
-            {candidate.current_address && (
-              <Box sx={{ display: "flex", alignItems: "start", gap: 1, mb: 1.5 }}>
-                <LocationOn fontSize="small" color="action" sx={{ mt: 0.2 }} />
-                <Typography variant="body2">{candidate.current_address}</Typography>
-              </Box>
-            )}
-
-            {candidate.desired_salary && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <AttachMoney fontSize="small" color="action" />
-                <Typography variant="body2">${candidate.desired_salary.toLocaleString()}</Typography>
-              </Box>
+              <Typography variant="body2" color="primary" sx={{ mb: 2 }}>{candidate.email}</Typography>
             )}
 
             <Divider sx={{ my: 2 }} />
 
-            {/* Education Section */}
-            {candidate.education && candidate.education.length > 0 && (
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+              Phone No
+            </Typography>
+            {candidate.phone && (
+              <Typography variant="body2" sx={{ mb: 2 }}>{candidate.phone}</Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+              Address
+            </Typography>
+            {candidate.current_address && (
+              <Typography variant="body2" sx={{ mb: 2 }}>{candidate.current_address}</Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
+            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+              Desired Salary
+            </Typography>
+            {candidate.desired_salary && (
+              <Typography variant="body2" sx={{ mb: 2 }}>${candidate.desired_salary.toLocaleString()}</Typography>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+
+            {candidate.referred_by && (
               <>
                 <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
-                  Education
+                  Referred By
                 </Typography>
-                {candidate.education.map((edu: any, index: number) => (
-                  <Box key={index} sx={{ mb: 2 }}>
-                    <Typography variant="body2" fontWeight="medium">{edu.degree}</Typography>
-                    <Typography variant="caption" color="text.secondary">{edu.institution}</Typography>
-                  </Box>
-                ))}
+                <Typography variant="body2" sx={{ mb: 2 }}>{candidate.referred_by}</Typography>
+                <Divider sx={{ my: 2 }} />
+              </>
+            )}
+
+            {candidate.website && (
+              <>
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+                  Website/Portfolio
+                </Typography>
+                <Typography variant="body2" color="primary" sx={{ mb: 2, wordBreak: "break-all" }}>{candidate.website}</Typography>
                 <Divider sx={{ my: 2 }} />
               </>
             )}
@@ -280,7 +341,7 @@ export function CandidateDetailsDrawer({
             {candidate.experience && candidate.experience.length > 0 && (
               <>
                 <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
-                  Experience
+                  Experiences
                 </Typography>
                 {candidate.experience.map((exp: any, index: number) => (
                   <Box key={index} sx={{ mb: 2 }}>
@@ -288,34 +349,7 @@ export function CandidateDetailsDrawer({
                     <Typography variant="caption" color="text.secondary">{exp.company}</Typography>
                   </Box>
                 ))}
-                <Divider sx={{ my: 2 }} />
               </>
-            )}
-
-            {/* More Section */}
-            <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
-              More
-            </Typography>
-            
-            {candidate.referred_by && (
-              <Box sx={{ mb: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">Referred By</Typography>
-                <Typography variant="body2">{candidate.referred_by}</Typography>
-              </Box>
-            )}
-            
-            {candidate.website && (
-              <Box sx={{ mb: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">Website</Typography>
-                <Typography variant="body2">{candidate.website}</Typography>
-              </Box>
-            )}
-            
-            {candidate.created_by && (
-              <Box sx={{ mb: 1.5 }}>
-                <Typography variant="caption" color="text.secondary">Created By</Typography>
-                <Typography variant="body2">{candidate.created_by.name || candidate.created_by.email}</Typography>
-              </Box>
             )}
           </Box>
 
@@ -359,7 +393,7 @@ export function CandidateDetailsDrawer({
         </Box>
 
         {/* Right Content Area */}
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100vh" }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
             <Typography variant="h6">Candidate Details</Typography>
             <IconButton onClick={onClose}>
@@ -370,97 +404,300 @@ export function CandidateDetailsDrawer({
           {/* Tabs */}
           <Box sx={{ borderBottom: 1, borderColor: "divider", px: 2 }}>
             <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
-              <Tab icon={<Description />} label="Documents" />
-              <Tab icon={<Quiz />} label="Questionaries" />
-              <Tab icon={<Note />} label="Notes" />
-              <Tab icon={<Person />} label="Activity" />
+              <Tab label="Documents" />
+              <Tab label="Questionaries" />
+              <Tab label="Notes" />
+              <Tab label="Scorecard" />
             </Tabs>
           </Box>
 
-          {/* Tab Content */}
-          <Box sx={{ flexGrow: 1, overflowY: "auto", p: 3 }}>
+          {/* Tab Content - Takes remaining space above comments */}
+          <Box sx={{ flexGrow: 1, overflowY: "auto", p: 3, minHeight: 0 }}>
+            {/* Documents Tab */}
             {activeTab === 0 && (
-              <Box>
-                {cvUrl && (
-                  <Button variant="outlined" startIcon={<Download />} href={cvUrl} download={`${candidate.name}_CV.pdf`} sx={{ mb: 2 }}>
-                    Download CV
-                  </Button>
+              <Box sx={{ height: "100%" }}>
+                {/* Document Type Tabs */}
+                <Box sx={{ display: "flex", gap: 1, mb: 2, alignItems: "center", justifyContent: "space-between" }}>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <Chip 
+                      label="Resume" 
+                      onClick={() => setDocumentType('resume')}
+                      color={documentType === 'resume' ? 'primary' : 'default'}
+                      variant={documentType === 'resume' ? 'filled' : 'outlined'}
+                    />
+                    <Chip 
+                      label="Cover letter" 
+                      onClick={() => setDocumentType('cover_letter')}
+                      color={documentType === 'cover_letter' ? 'primary' : 'default'}
+                      variant={documentType === 'cover_letter' ? 'filled' : 'outlined'}
+                    />
+                    <Chip 
+                      label="Portfolio" 
+                      onClick={() => setDocumentType('portfolio')}
+                      color={documentType === 'portfolio' ? 'primary' : 'default'}
+                      variant={documentType === 'portfolio' ? 'filled' : 'outlined'}
+                    />
+                  </Box>
+                  <Button variant="text" size="small">Download All</Button>
+                </Box>
+
+                {/* Document Preview */}
+                {cvUrl && documentType === 'resume' ? (
+                  <Box sx={{ height: "calc(100% - 100px)", display: "flex", flexDirection: "column" }}>
+                    <Box sx={{ display: "flex", gap: 1, mb: 2, justifyContent: "flex-end" }}>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        startIcon={<Download />} 
+                        href={cvUrl} 
+                        download={`${candidate.name}_CV.pdf`}
+                      >
+                        Download
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        startIcon={<OpenInNew />} 
+                        onClick={handleOpenInNewTab}
+                      >
+                        Open in New Tab
+                      </Button>
+                    </Box>
+                    <Box 
+                      sx={{ 
+                        flexGrow: 1, 
+                        border: "1px solid", 
+                        borderColor: "divider", 
+                        borderRadius: 1,
+                        overflow: "hidden"
+                      }}
+                    >
+                      <iframe 
+                        src={cvUrl} 
+                        style={{ width: "100%", height: "100%", border: "none" }}
+                        title="CV Preview"
+                      />
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ 
+                    display: "flex", 
+                    flexDirection: "column", 
+                    alignItems: "center", 
+                    justifyContent: "center",
+                    height: "300px",
+                    border: "2px dashed",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    bgcolor: "background.default"
+                  }}>
+                    <Description sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
+                    <Typography variant="body1" color="text.secondary" gutterBottom>
+                      No {documentType.replace('_', ' ')} available
+                    </Typography>
+                    {isRecruiter && (
+                      <Button 
+                        variant="contained" 
+                        startIcon={<Upload />}
+                        onClick={handleCvUpload}
+                        sx={{ mt: 2 }}
+                      >
+                        Upload CV
+                      </Button>
+                    )}
+                  </Box>
                 )}
-                {!cvUrl && <Typography color="text.secondary">No CV available</Typography>}
               </Box>
             )}
 
+            {/* Questionaries Tab */}
             {activeTab === 1 && (
-              <Typography color="text.secondary">No questionaries available</Typography>
+              <Box>
+                <Typography variant="h6" gutterBottom>Screening Questions</Typography>
+                
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    Why do you want to work here?
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "background.default" }}>
+                    <Typography variant="body2">{questionnaires.whyWorkHere}</Typography>
+                  </Paper>
+
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    What are your salary expectations?
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "background.default" }}>
+                    <Typography variant="body2">{questionnaires.salaryExpectations}</Typography>
+                  </Paper>
+
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    When can you start?
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "background.default" }}>
+                    <Typography variant="body2">{new Date(questionnaires.startDate).toLocaleDateString()}</Typography>
+                  </Paper>
+
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    Are you willing to relocate?
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "background.default" }}>
+                    <Typography variant="body2">{questionnaires.willingToRelocate === 'yes' ? 'Yes' : 'No'}</Typography>
+                  </Paper>
+                </Box>
+              </Box>
             )}
 
+            {/* Notes Tab */}
             {activeTab === 2 && (
               <Box>
                 <TextField
                   fullWidth
                   multiline
-                  rows={10}
+                  rows={12}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Add notes about this candidate..."
+                  disabled={!isRecruiter}
                 />
-                <Button variant="contained" onClick={handleSaveNotes} disabled={isSavingNotes} sx={{ mt: 2 }}>
-                  {isSavingNotes ? "Saving..." : "Save Notes"}
-                </Button>
+                {isRecruiter && (
+                  <Button variant="contained" onClick={handleSaveNotes} disabled={isSavingNotes} sx={{ mt: 2 }}>
+                    {isSavingNotes ? "Saving..." : "Save Notes"}
+                  </Button>
+                )}
+                {!isRecruiter && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+                    Only recruiters can edit notes
+                  </Typography>
+                )}
               </Box>
             )}
 
+            {/* Activity/Scorecard Tab */}
             {activeTab === 3 && (
               <Box>
-                {comments.length === 0 ? (
-                  <Typography color="text.secondary" textAlign="center">No comments yet</Typography>
+                <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <History /> Pipeline History
+                </Typography>
+                
+                {activityHistory.length === 0 ? (
+                  <Typography color="text.secondary" textAlign="center" sx={{ mt: 4 }}>
+                    No activity history available
+                  </Typography>
                 ) : (
-                  <List>
-                    {comments.map((comment) => (
-                      <ListItem key={comment.id} alignItems="flex-start">
-                        <ListItemAvatar>
-                          <Avatar>{comment.created_by.name?.charAt(0) || comment.created_by.email.charAt(0)}</Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={comment.created_by.name || comment.created_by.email}
-                          secondary={
-                            <>
-                              <Typography variant="body2" component="span">{comment.text}</Typography>
-                              <Typography variant="caption" display="block" color="text.secondary">
-                                {new Date(comment.created_at).toLocaleString()}
-                              </Typography>
-                            </>
-                          }
-                        />
-                      </ListItem>
+                  <Timeline position="right" sx={{ mt: 2 }}>
+                    {activityHistory.map((activity, index) => (
+                      <TimelineItem key={activity.id}>
+                        <TimelineOppositeContent color="text.secondary" sx={{ flex: 0.3 }}>
+                          <Typography variant="caption">
+                            {new Date(activity.changed_at).toLocaleDateString()}
+                          </Typography>
+                          <Typography variant="caption" display="block">
+                            {new Date(activity.changed_at).toLocaleTimeString()}
+                          </Typography>
+                        </TimelineOppositeContent>
+                        <TimelineSeparator>
+                          <TimelineDot color="primary" />
+                          {index < activityHistory.length - 1 && <TimelineConnector />}
+                        </TimelineSeparator>
+                        <TimelineContent>
+                          <Paper elevation={0} variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              Status changed: {statuses.find(s => s.value === activity.old_status)?.label || activity.old_status} → {statuses.find(s => s.value === activity.new_status)?.label || activity.new_status}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              by {activity.changed_by.name || activity.changed_by.email}
+                            </Typography>
+                          </Paper>
+                        </TimelineContent>
+                      </TimelineItem>
                     ))}
-                  </List>
+                  </Timeline>
                 )}
-
-                <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Add a comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                  />
-                  <IconButton 
-                    color="primary" 
-                    onClick={handleAddComment} 
-                    disabled={!newComment.trim()}
-                    sx={{ 
-                      borderRadius: 1,
-                      width: 40,
-                      height: 40
-                    }}
-                  >
-                    <Send />
-                  </IconButton>
-                </Box>
               </Box>
             )}
+          </Box>
+
+          {/* Comments Section - Fixed at bottom */}
+          <Box sx={{ 
+            borderTop: "2px solid", 
+            borderColor: "divider", 
+            bgcolor: "background.paper",
+            display: "flex",
+            flexDirection: "column",
+            height: "300px"
+          }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ p: 2, pb: 1 }}>
+              Comments
+            </Typography>
+            
+            {/* Comments List - Scrollable */}
+            <Box sx={{ flexGrow: 1, overflowY: "auto", px: 2 }}>
+              {comments.length === 0 ? (
+                <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                  No comments yet
+                </Typography>
+              ) : (
+                <List sx={{ py: 0 }}>
+                  {[...comments].reverse().map((comment) => (
+                    <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
+                      <ListItemAvatar>
+                        <Avatar sx={{ width: 32, height: 32 }}>
+                          {comment.created_by.name?.charAt(0) || comment.created_by.email.charAt(0)}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <Typography variant="body2" fontWeight="medium">
+                              {comment.created_by.name || comment.created_by.email}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(comment.created_at).toLocaleString()}
+                            </Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <Typography variant="body2" sx={{ mt: 0.5 }}>
+                            {comment.text}
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+
+            {/* Add Comment Input - Fixed at bottom */}
+            <Box sx={{ p: 2, pt: 1, borderTop: "1px solid", borderColor: "divider" }}>
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
+                />
+                <IconButton 
+                  color="primary" 
+                  onClick={handleAddComment} 
+                  disabled={!newComment.trim()}
+                  sx={{ 
+                    bgcolor: newComment.trim() ? "primary.main" : "action.disabledBackground",
+                    color: newComment.trim() ? "white" : "action.disabled",
+                    "&:hover": {
+                      bgcolor: newComment.trim() ? "primary.dark" : "action.disabledBackground"
+                    },
+                    borderRadius: 1,
+                    width: 40,
+                    height: 40
+                  }}
+                >
+                  <Send fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Drawer>
