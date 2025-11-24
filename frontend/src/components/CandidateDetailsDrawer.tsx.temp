@@ -1,0 +1,543 @@
+import { useState, useEffect } from "react";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Drawer,
+  Avatar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  Tabs,
+  Tab,
+  TextField,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Paper,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from "@mui/material";
+import {
+  Close,
+  Email,
+  Phone,
+  LocationOn,
+  AttachMoney,
+  Person,
+  Description,
+  Quiz,
+  Note,
+  Send,
+  Download
+} from "@mui/icons-material";
+import { API_URL, request } from "../api";
+
+interface Candidate {
+  id: string;
+  name: string;
+  first_name?: string;
+  last_name?: string;
+  email: string;
+  phone: string;
+  current_address?: string;
+  permanent_address?: string;
+  status: string;
+  cv_file_path: string;
+  cover_letter_path?: string;
+  profile_picture?: string;
+  education?: any[];
+  experience?: any[];
+  desired_salary?: number;
+  referred_by?: string;
+  website?: string;
+  created_at: string;
+  notes?: string;
+  interview_date?: string;
+  interview_link?: string;
+  created_by?: {
+    id: string;
+    email: string;
+    name?: string;
+  };
+}
+
+interface Comment {
+  id: string;
+  text: string;
+  created_at: string;
+  created_by: {
+    email: string;
+    name?: string;
+  };
+}
+
+interface CandidateDetailsDrawerProps {
+  candidate: Candidate | null;
+  open: boolean;
+  onClose: () => void;
+  onStatusChange: (id: string, status: string) => void;
+  onUpdate: () => void; // To trigger reload of job/candidate data
+  statuses?: { value: string; label: string }[];
+}
+
+
+
+export function CandidateDetailsDrawer({
+  candidate,
+  open,
+  onClose,
+  onStatusChange,
+  onUpdate,
+  statuses = []
+}: CandidateDetailsDrawerProps) {
+  const [activeTab, setActiveTab] = useState(0);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [notes, setNotes] = useState("");
+  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  useEffect(() => {
+    if (candidate) {
+      loadComments();
+      loadCv();
+      setNotes(candidate.notes || "");
+    } else {
+      setComments([]);
+      setCvUrl(null);
+      setNotes("");
+    }
+  }, [candidate]);
+
+  const loadComments = async () => {
+    if (!candidate) return;
+    try {
+      const data = await request(`/candidates/${candidate.id}/comments`);
+      setComments(data);
+    } catch (err) {
+      console.error("Failed to load comments", err);
+    }
+  };
+
+  const loadCv = async () => {
+    if (!candidate) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/candidates/${candidate.id}/cv`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setCvUrl(url);
+      }
+    } catch (err) {
+      console.error("Failed to load CV", err);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!candidate || !newComment.trim()) return;
+    try {
+      await request(`/candidates/${candidate.id}/comments`, {
+        method: "POST",
+        body: JSON.stringify({ text: newComment }),
+      });
+      setNewComment("");
+      loadComments();
+    } catch (err) {
+      console.error("Failed to add comment", err);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!candidate) return;
+    setIsSavingNotes(true);
+    try {
+      // We might need a specific endpoint for notes or update the candidate
+      // Assuming we can update candidate details via PATCH /candidates/:id
+      // If that endpoint doesn't exist or support notes, we might need to create it.
+      // For now, I'll assume a generic update or I'll implement a specific one.
+      // Let's try PATCH /candidates/:id/notes if it existed, but I'll use the status endpoint if I can't find another, 
+      // OR better, I'll assume I need to implement a general update.
+      // Actually, looking at JobDetails.tsx, there was only status update. 
+      // I will use a new endpoint or the status one if I modify it.
+      // Let's assume I'll add a general update endpoint or use a specific one.
+      // For now, I'll use a hypothetical endpoint and I'll implement it in backend next.
+      await request(`/candidates/${candidate.id}/notes`, {
+        method: "PATCH",
+        body: JSON.stringify({ notes }),
+      });
+      onUpdate();
+    } catch (err) {
+      console.error("Failed to save notes", err);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleDeleteCandidate = async () => {
+    if (!candidate) return;
+    try {
+      await request(`/candidates/${candidate.id}`, {
+        method: "DELETE",
+      });
+      setShowDeleteDialog(false);
+      onClose();
+      onUpdate(); // Refresh the job details page
+    } catch (err) {
+      console.error("Failed to delete candidate", err);
+    }
+  };
+
+  if (!candidate) return null;
+          </Typography>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body2" fontWeight="medium">{candidate.first_name} {candidate.last_name}</Typography>
+          </Box>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Contacts Section */}
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+            Contacts
+          </Typography>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Email</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Email fontSize="small" color="action" />
+              <Typography variant="body2" sx={{ wordBreak: "break-all" }}>{candidate.email || "N/A"}</Typography>
+            </Box>
+          </Box>
+
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Phone No</Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Phone fontSize="small" color="action" />
+              <Typography variant="body2">{candidate.phone || "N/A"}</Typography>
+            </Box>
+          </Box>
+
+          {candidate.current_address && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Address</Typography>
+              <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                <LocationOn fontSize="small" color="action" />
+                <Typography variant="body2">{candidate.current_address}</Typography>
+              </Box>
+            </Box>
+          )}
+
+          {candidate.website && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Website/Portfolio</Typography>
+              <Typography 
+                variant="body2" 
+                component="a" 
+                href={candidate.website.startsWith('http') ? candidate.website : `https://${candidate.website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+              >
+                {candidate.website}
+              </Typography>
+            </Box>
+          )}
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Education Section */}
+          {candidate.education && candidate.education.length > 0 && (
+            <>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+                Education
+              </Typography>
+              {candidate.education.map((edu: any, index: number) => (
+                <Box key={index} sx={{ mb: 2 }}>
+                  <Typography variant="body2" fontWeight="medium">{edu.degree || "Degree"}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {edu.institution || "Institution"}
+                  </Typography>
+                  {(edu.location || edu.startDate) && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {[edu.location, edu.startDate].filter(Boolean).join(" • ")}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+              <Divider sx={{ my: 2 }} />
+            </>
+          )}
+
+          {/* Experience Section */}
+          {candidate.experience && candidate.experience.length > 0 && (
+            <>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+                Experience
+              </Typography>
+              {candidate.experience.map((exp: any, index: number) => (
+                <Box key={index} sx={{ mb: 2 }}>
+                  <Typography variant="body2" fontWeight="medium">{exp.position || "Position"}</Typography>
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    {exp.company || "Company"}
+                  </Typography>
+                  {(exp.location || exp.startDate) && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {[exp.location, exp.startDate].filter(Boolean).join(" • ")}
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+              <Divider sx={{ my: 2 }} />
+            </>
+          )}
+
+          {/* More Section */}
+          <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+            More
+          </Typography>
+
+          {candidate.desired_salary && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Desired Salary</Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <AttachMoney fontSize="small" color="action" />
+                <Typography variant="body2">${candidate.desired_salary.toLocaleString()}</Typography>
+              </Box>
+            </Box>
+          )}
+
+          {candidate.referred_by && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Referred By</Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Person fontSize="small" color="action" />
+                <Typography variant="body2">{candidate.referred_by}</Typography>
+              </Box>
+            </Box>
+          )}
+
+          {candidate.created_by && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" color="text.secondary" display="block" gutterBottom>Added By</Typography>
+              <Typography variant="body2">{candidate.created_by.name || candidate.created_by.email}</Typography>
+              <Typography variant="caption" color="text.secondary" display="block">
+                {new Date(candidate.created_at).toLocaleDateString()}
+              </Typography>
+            </Box>
+          )}
+
+          <Divider sx={{ my: 2 }} />
+
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel>Pipeline Status</InputLabel>
+            <Select
+              value={candidate.status}
+              label="Pipeline Status"
+              onChange={(e) => onStatusChange(candidate.id, e.target.value)}
+            >
+              {statuses.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Button 
+            variant="outlined" 
+            color="error" 
+            fullWidth 
+            onClick={() => onStatusChange(candidate.id, "rejected")}
+            disabled={candidate.status === "rejected"}
+          >
+            Reject Candidate
+          </Button>
+
+          <Button 
+            variant="contained" 
+            color="error" 
+            fullWidth 
+            onClick={() => setShowDeleteDialog(true)}
+            sx={{ mt: 1 }}
+          >
+            Delete Candidate
+          </Button>
+        </Box>
+      </Box>
+
+      {/* Right Content Area */}
+      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", height: "100%" }}>
+        {/* Header with Close */}
+        <Box sx={{ p: 1, display: "flex", justifyContent: "flex-end" }}>
+          <IconButton 
+            onClick={onClose}
+            sx={{ 
+              borderRadius: 1,
+              width: 40,
+              height: 40
+            }}
+          >
+            <Close />
+          </IconButton>
+        </Box>
+
+        {/* Tabs */}
+        <Box sx={{ borderBottom: 1, borderColor: "divider", px: 2 }}>
+          <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)}>
+            <Tab label="Documents" icon={<Description fontSize="small" />} iconPosition="start" />
+            <Tab label="Questionaries" icon={<Quiz fontSize="small" />} iconPosition="start" />
+            <Tab label="Notes" icon={<Note fontSize="small" />} iconPosition="start" />
+            <Tab label="Activity" icon={<Note fontSize="small" />} iconPosition="start" />
+          </Tabs>
+        </Box>
+
+        {/* Tab Content */}
+        <Box sx={{ flexGrow: 1, overflowY: "auto", p: 3 }}>
+          {activeTab === 0 && (
+            <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <Box sx={{ mb: 2, display: "flex", gap: 1 }}>
+                <Chip label="Resume" color="primary" onClick={() => {}} />
+                <Chip label="Cover Letter" variant="outlined" onClick={() => {}} />
+                <Chip label="Portfolio" variant="outlined" onClick={() => {}} />
+                <Box sx={{ flexGrow: 1 }} />
+                {cvUrl && (
+                  <Button startIcon={<Download />} href={cvUrl} download={`cv-${candidate.name}.pdf`}>
+                    Download All
+                  </Button>
+                )}
+              </Box>
+              
+              <Paper variant="outlined" sx={{ flexGrow: 1, bgcolor: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {cvUrl ? (
+                  <iframe src={cvUrl} width="100%" height="100%" style={{ border: "none" }} />
+                ) : (
+                  <Typography color="text.secondary">No document available</Typography>
+                )}
+              </Paper>
+            </Box>
+          )}
+
+          {activeTab === 1 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>Screening Questions</Typography>
+              {[1, 2, 3].map((i) => (
+                <Box key={i} sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" fontWeight="bold">Question {i}</Typography>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>What is your experience with React?</Typography>
+                  <Paper variant="outlined" sx={{ p: 2, bgcolor: "background.default" }}>
+                    <Typography variant="body2">I have 5 years of experience working with React and its ecosystem...</Typography>
+                  </Paper>
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {activeTab === 2 && (
+            <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <Typography variant="h6" gutterBottom>Private Notes</Typography>
+              <TextField
+                multiline
+                rows={12}
+                fullWidth
+                placeholder="Add private notes about this candidate..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                sx={{ mb: 2, flexGrow: 1 }}
+              />
+              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button variant="contained" onClick={handleSaveNotes} disabled={isSavingNotes}>
+                  {isSavingNotes ? "Saving..." : "Save Notes"}
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {activeTab === 3 && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <Typography color="text.secondary">Scorecard feature coming soon</Typography>
+            </Box>
+          )}
+        </Box>
+
+        {/* Comments Section (Bottom) */}
+        <Box sx={{ p: 2, borderTop: "1px solid", borderColor: "divider", bgcolor: "background.default" }}>
+            <Typography variant="subtitle2" gutterBottom>Comments</Typography>
+            <Box sx={{ maxHeight: "150px", overflowY: "auto", mb: 2 }}>
+                {comments.length === 0 && <Typography variant="caption" color="text.secondary">No comments yet.</Typography>}
+                {comments.map((comment) => (
+                    <Box key={comment.id} sx={{ mb: 1.5, display: "flex", gap: 1.5 }}>
+                        <Avatar sx={{ width: 24, height: 24, fontSize: "0.75rem" }}>
+                            {comment.created_by?.email?.[0]?.toUpperCase() || "U"}
+                        </Avatar>
+                        <Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Typography variant="caption" fontWeight="bold">
+                                    {comment.created_by?.name || comment.created_by?.email}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {new Date(comment.created_at).toLocaleString()}
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2">{comment.text}</Typography>
+                        </Box>
+                    </Box>
+                ))}
+            </Box>
+            <Box sx={{ display: "flex", gap: 1 }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddComment()}
+                />
+                <IconButton 
+                  color="primary" 
+                  onClick={handleAddComment} 
+                  disabled={!newComment.trim()}
+                  sx={{ 
+                    borderRadius: 1,
+                    width: 40,
+                    height: 40
+                  }}
+                >
+                    <Send />
+                </IconButton>
+            </Box>
+        </Box>
+      </Box>
+    </Drawer>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+      >
+        <DialogTitle>Delete Candidate</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this candidate? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+          <Button onClick={handleDeleteCandidate} color="error" variant="contained">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
