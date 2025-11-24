@@ -158,13 +158,6 @@ export function Dashboard() {
 
   return (
     <Box sx={{ maxWidth: 1600, mx: "auto" }}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-        <Link underline="hover" color="inherit" href="/dashboard">
-          Home
-        </Link>
-        <Typography color="text.primary">Job Openings</Typography>
-      </Breadcrumbs>
 
       {/* Header Section */}
       <Box sx={{ 
