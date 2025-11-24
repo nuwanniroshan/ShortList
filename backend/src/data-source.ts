@@ -7,8 +7,8 @@ import { Candidate } from "./entity/Candidate";
 import { Comment } from "./entity/Comment";
 import { Office } from "./entity/Office";
 import { Department } from "./entity/Department";
-
 import { PipelineStatus } from "./entity/PipelineStatus";
+import { PipelineHistory } from "./entity/PipelineHistory";
 
 dotenv.config();
 
@@ -21,7 +21,7 @@ export const AppDataSource = new DataSource({
   database: process.env.DB_NAME || "shortlist",
   synchronize: true, // Set to false in production
   logging: false,
-  entities: [User, Job, Candidate, Comment, Office, Department, PipelineStatus],
+  entities: [User, Job, Candidate, Comment, Office, Department, PipelineStatus, PipelineHistory],
   migrations: ["src/migration/**/*.ts"],
   subscribers: ["src/subscriber/**/*.ts"],
 });

@@ -181,25 +181,13 @@ export function CandidateDetailsDrawer({
 
   const loadActivityHistory = async () => {
     if (!candidate) return;
-    // Mock activity history for now
-    // TODO: Replace with actual API call when backend endpoint is ready
-    const mockHistory: ActivityLog[] = [
-      {
-        id: "1",
-        old_status: "reviewed",
-        new_status: "mobile_screening",
-        changed_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        changed_by: { name: "John Doe", email: "john@example.com" }
-      },
-      {
-        id: "2",
-        old_status: "applied",
-        new_status: "reviewed",
-        changed_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        changed_by: { name: "Jane Smith", email: "jane@example.com" }
-      }
-    ];
-    setActivityHistory(mockHistory);
+    try {
+      const data = await request(`/candidates/${candidate.id}/pipeline-history`);
+      setActivityHistory(data);
+    } catch (err) {
+      console.error("Failed to load pipeline history", err);
+      setActivityHistory([]);
+    }
   };
 
   const handleAddComment = async () => {

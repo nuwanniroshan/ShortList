@@ -7,6 +7,7 @@ import { CommentController } from "./controller/CommentController";
 import { OfficeController } from "./controller/OfficeController";
 import { DepartmentController } from "./controller/DepartmentController";
 import { PipelineStatusController } from "./controller/PipelineStatusController";
+import { PipelineHistoryController } from "./controller/PipelineHistoryController";
 import { auth } from "./middleware/auth";
 import { checkRole, checkJobAssignment, checkJobOwnership, checkJobNotClosed } from "./middleware/checkRole";
 import { UserRole } from "./entity/User";
@@ -55,6 +56,7 @@ router.get("/candidates/:id/profile-picture", CandidateController.getProfilePict
 router.patch("/candidates/:id/status", auth, checkJobNotClosed, CandidateController.updateStatus);
 router.patch("/candidates/:id/notes", auth, CandidateController.updateNotes);
 router.patch("/candidates/:id/cv", auth, checkRole([UserRole.RECRUITER, UserRole.ADMIN, UserRole.HR]), upload.single('cv'), CandidateController.uploadCv);
+router.get("/candidates/:id/pipeline-history", auth, PipelineHistoryController.getHistoryByCandidate);
 router.delete("/candidates/:id", auth, CandidateController.delete);
 
 // Comment routes

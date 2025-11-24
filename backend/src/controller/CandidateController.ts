@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Candidate, CandidateStatus } from "../entity/Candidate";
 import { Comment } from "../entity/Comment";
 import { Job } from "../entity/Job";
+import { PipelineHistory } from "../entity/PipelineHistory";
 import multer from "multer";
 import path from "path";
 import sharp from "sharp";
@@ -96,8 +97,10 @@ export class CandidateController {
     candidate.status = CandidateStatus.NEW;
     
     // Track who created the candidate
-    if ((req as any).user) {
-      candidate.created_by = (req as any).user;
+    // Track who created the candidate
+    const user = (req as any).user;
+    if (user && user.userId) {
+      candidate.created_by = { id: user.userId } as any;
     }
 
     try {
@@ -136,11 +139,15 @@ export class CandidateController {
     const { status, interview_date, interview_link } = req.body;
 
     const candidateRepository = AppDataSource.getRepository(Candidate);
+    const pipelineHistoryRepository = AppDataSource.getRepository(PipelineHistory);
     const candidate = await candidateRepository.findOne({ where: { id: id as string }, relations: ["job", "job.assignees"] });
 
     if (!candidate) {
       return res.status(404).json({ message: "Candidate not found" });
     }
+
+    // Store old status for history tracking
+    const oldStatus = candidate.status;
 
     candidate.status = status;
     if (interview_date) candidate.interview_date = interview_date;
@@ -148,6 +155,23 @@ export class CandidateController {
 
     try {
       await candidateRepository.save(candidate);
+
+      // Create pipeline history record
+      if (oldStatus !== status) {
+        const pipelineHistory = new PipelineHistory();
+        pipelineHistory.candidate = candidate;
+        pipelineHistory.old_status = oldStatus;
+        pipelineHistory.new_status = status;
+        
+        // Track who made the change
+        const user = (req as any).user;
+        if (user && user.userId) {
+          // Map JWT payload userId to User entity id
+          pipelineHistory.changed_by = { id: user.userId } as any;
+        }
+        
+        await pipelineHistoryRepository.save(pipelineHistory);
+      }
 
       // Notify assignees about status change
       candidate.job.assignees.forEach(user => {
