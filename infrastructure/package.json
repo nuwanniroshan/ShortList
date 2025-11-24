@@ -1,0 +1,32 @@
+{
+  "name": "infrastructure",
+  "version": "1.0.0",
+  "description": "AWS CDK infrastructure for Shortlist application",
+  "bin": {
+    "infrastructure": "bin/infrastructure.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy:dev": "cdk deploy DevStack",
+    "deploy:qa": "cdk deploy QaStack",
+    "deploy:prod": "cdk deploy ProdStack",
+    "deploy:all": "cdk deploy --all",
+    "destroy:dev": "cdk destroy DevStack",
+    "destroy:qa": "cdk destroy QaStack",
+    "destroy:prod": "cdk destroy ProdStack"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "aws-cdk": "^2.120.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.3.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.120.0",
+    "constructs": "^10.3.0"
+  }
+}

@@ -56,9 +56,6 @@ backend/uploads/*
 temp/
 tmp/
 
-# Docker
-.dockerignore
-
 # Misc
 .cache/
 .parcel-cache/
