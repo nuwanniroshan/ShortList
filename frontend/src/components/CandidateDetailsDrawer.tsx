@@ -42,7 +42,9 @@ import {
   Download,
   OpenInNew,
   Upload,
-  History
+  History,
+  ExpandMore,
+  ExpandLess
 } from "@mui/icons-material";
 import { API_URL, request } from "../api";
 
@@ -114,7 +116,6 @@ export function CandidateDetailsDrawer({
   statuses = []
 }: CandidateDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState(0);
-  const [documentType, setDocumentType] = useState<'resume' | 'cover_letter' | 'portfolio'>('resume');
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [notes, setNotes] = useState("");
@@ -123,6 +124,7 @@ export function CandidateDetailsDrawer({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activityHistory, setActivityHistory] = useState<ActivityLog[]>([]);
   const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const [isCommentsExpanded, setIsCommentsExpanded] = useState(true);
   const cvFileInputRef = useRef<HTMLInputElement>(null);
   
   // Hardcoded questionnaire data
@@ -486,7 +488,7 @@ export function CandidateDetailsDrawer({
               <Tab label="Documents" />
               <Tab label="Questionaries" />
               <Tab label="Notes" />
-              <Tab label="Scorecard" />
+              <Tab label="Pipeline History" />
             </Tabs>
           </Box>
 
@@ -494,49 +496,20 @@ export function CandidateDetailsDrawer({
           <Box sx={{ flexGrow: 1, overflowY: "auto", p: 3, minHeight: 0 }}>
             {/* Documents Tab */}
             {activeTab === 0 && (
-              <Box sx={{ height: "100%" }}>
-                {/* Document Type Tabs */}
-                <Box sx={{ display: "flex", gap: 1, mb: 2, alignItems: "center", justifyContent: "space-between" }}>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <Chip 
-                      label="Resume" 
-                      onClick={() => setDocumentType('resume')}
-                      color={documentType === 'resume' ? 'primary' : 'default'}
-                      variant={documentType === 'resume' ? 'filled' : 'outlined'}
-                    />
-                    <Chip 
-                      label="Cover letter" 
-                      onClick={() => setDocumentType('cover_letter')}
-                      color={documentType === 'cover_letter' ? 'primary' : 'default'}
-                      variant={documentType === 'cover_letter' ? 'filled' : 'outlined'}
-                    />
-                    <Chip 
-                      label="Portfolio" 
-                      onClick={() => setDocumentType('portfolio')}
-                      color={documentType === 'portfolio' ? 'primary' : 'default'}
-                      variant={documentType === 'portfolio' ? 'filled' : 'outlined'}
-                    />
-                  </Box>
-                  <Button variant="text" size="small">Download All</Button>
-                </Box>
-
+              <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
                 {/* Document Preview */}
-                {cvUrl && documentType === 'resume' ? (
-                  <Box sx={{ height: "calc(100% - 100px)", display: "flex", flexDirection: "column" }}>
-                    <Box sx={{ display: "flex", gap: 1, mb: 2, justifyContent: "flex-end" }}>
+                {cvUrl ? (
+                  <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                    <Box sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center", justifyContent: "flex-end" }}>
                       <Button 
-                        variant="outlined" 
-                        size="small"
-                        startIcon={<Download />} 
+                        component="a"
                         href={cvUrl} 
                         download={`${candidate.name}_CV.pdf`}
                       >
                         Download
                       </Button>
-                      <Button 
-                        variant="outlined" 
-                        size="small"
-                        startIcon={<OpenInNew />} 
+                      <Button
+                        component="a"
                         onClick={handleOpenInNewTab}
                       >
                         Open in New Tab
@@ -544,11 +517,12 @@ export function CandidateDetailsDrawer({
                     </Box>
                     <Box 
                       sx={{ 
-                        flexGrow: 1, 
+                        flexGrow: 1,
                         border: "1px solid", 
                         borderColor: "divider", 
                         borderRadius: 1,
-                        overflow: "hidden"
+                        overflow: "hidden",
+                        minHeight: 0
                       }}
                     >
                       <iframe 
@@ -572,7 +546,7 @@ export function CandidateDetailsDrawer({
                   }}>
                     <Description sx={{ fontSize: 48, color: "text.secondary", mb: 2 }} />
                     <Typography variant="body1" color="text.secondary" gutterBottom>
-                      No {documentType.replace('_', ' ')} available
+                      No CV available
                     </Typography>
                     {isRecruiter && (
                       <>
@@ -661,11 +635,11 @@ export function CandidateDetailsDrawer({
               </Box>
             )}
 
-            {/* Activity/Scorecard Tab */}
+            {/* Pipeline History Tab */}
             {activeTab === 3 && (
               <Box>
                 <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <History /> Pipeline History
+                  Pipeline History
                 </Typography>
                 
                 {activityHistory.length === 0 ? (
@@ -706,87 +680,107 @@ export function CandidateDetailsDrawer({
             )}
           </Box>
 
-          {/* Comments Section - Fixed at bottom */}
+          {/* Comments Section - Collapsible at bottom */}
           <Box sx={{ 
             borderTop: "2px solid", 
             borderColor: "divider", 
             bgcolor: "background.paper",
             display: "flex",
             flexDirection: "column",
-            height: "300px"
+            height: isCommentsExpanded ? "300px" : "auto"
           }}>
-            <Typography variant="subtitle1" fontWeight="bold" sx={{ p: 2, pb: 1 }}>
-              Comments
-            </Typography>
+            <Box 
+              sx={{ 
+                p: 2, 
+                pb: 1, 
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center",
+                cursor: "pointer",
+                "&:hover": { bgcolor: "action.hover" }
+              }}
+              onClick={() => setIsCommentsExpanded(!isCommentsExpanded)}
+            >
+              <Typography variant="subtitle1" fontWeight="bold">
+                Comments ({comments.length})
+              </Typography>
+              <IconButton size="small">
+                {isCommentsExpanded ? <ExpandLess /> : <ExpandMore />}
+              </IconButton>
+            </Box>
             
-            {/* Comments List - Scrollable */}
-            <Box sx={{ flexGrow: 1, overflowY: "auto", px: 2 }}>
-              {comments.length === 0 ? (
-                <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
-                  No comments yet
-                </Typography>
-              ) : (
-                <List sx={{ py: 0 }}>
-                  {[...comments].reverse().map((comment) => (
-                    <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
-                      <ListItemAvatar>
-                        <Avatar sx={{ width: 32, height: 32 }}>
-                          {comment.created_by.name?.charAt(0) || comment.created_by.email.charAt(0)}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <Typography variant="body2" fontWeight="medium">
-                              {comment.created_by.name || comment.created_by.email}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(comment.created_at).toLocaleString()}
-                            </Typography>
-                          </Box>
-                        }
-                        secondary={
-                          <Typography variant="body2" sx={{ mt: 0.5 }}>
-                            {comment.text}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </Box>
+            {isCommentsExpanded && (
+              <>
+                {/* Comments List - Scrollable */}
+                <Box sx={{ flexGrow: 1, overflowY: "auto", px: 2, minHeight: 0 }}>
+                  {comments.length === 0 ? (
+                    <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                      No comments yet
+                    </Typography>
+                  ) : (
+                    <List sx={{ py: 0 }}>
+                      {[...comments].reverse().map((comment) => (
+                        <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
+                          <ListItemAvatar>
+                            <Avatar sx={{ width: 32, height: 32 }}>
+                              {comment.created_by.name?.charAt(0) || comment.created_by.email.charAt(0)}
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <Typography variant="body2" fontWeight="medium">
+                                  {comment.created_by.name || comment.created_by.email}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(comment.created_at).toLocaleString()}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                {comment.text}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  )}
+                </Box>
 
-            {/* Add Comment Input - Fixed at bottom */}
-            <Box sx={{ p: 2, pt: 1, borderTop: "1px solid", borderColor: "divider" }}>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  placeholder="Add a comment..."
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
-                />
-                <IconButton 
-                  color="primary" 
-                  onClick={handleAddComment} 
-                  disabled={!newComment.trim()}
-                  sx={{ 
-                    bgcolor: newComment.trim() ? "primary.main" : "action.disabledBackground",
-                    color: newComment.trim() ? "white" : "action.disabled",
-                    "&:hover": {
-                      bgcolor: newComment.trim() ? "primary.dark" : "action.disabledBackground"
-                    },
-                    borderRadius: 1,
-                    width: 40,
-                    height: 40
-                  }}
-                >
-                  <Send fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
+                {/* Add Comment Input - Fixed at bottom */}
+                <Box sx={{ p: 2, pt: 1, borderTop: "1px solid", borderColor: "divider" }}>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      placeholder="Add a comment..."
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
+                    />
+                    <IconButton 
+                      color="primary" 
+                      onClick={handleAddComment} 
+                      disabled={!newComment.trim()}
+                      sx={{ 
+                        bgcolor: newComment.trim() ? "primary.main" : "action.disabledBackground",
+                        color: newComment.trim() ? "white" : "action.disabled",
+                        "&:hover": {
+                          bgcolor: newComment.trim() ? "primary.dark" : "action.disabledBackground"
+                        },
+                        borderRadius: 1,
+                        width: 40,
+                        height: 40
+                      }}
+                    >
+                      <Send fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              </>
+            )}
           </Box>
         </Box>
       </Drawer>

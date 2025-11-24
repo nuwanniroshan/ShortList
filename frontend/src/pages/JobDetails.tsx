@@ -23,8 +23,6 @@ import {
 import {
   PersonAdd,
   MoreHoriz,
-  Edit,
-  Delete
 } from "@mui/icons-material";
 import { CandidateDetailsDrawer } from "../components/CandidateDetailsDrawer";
 
@@ -396,18 +394,6 @@ export function JobDetails() {
                       ({candidatesByStatus[col.id]?.length || 0})
                   </Typography>
                 </Box>
-                <IconButton 
-                  size="small"
-                  sx={{ 
-                    borderRadius: 1,
-                    width: 32,
-                    height: 32,
-                    border: '1px solid',
-                    borderColor: 'divider'
-                  }}
-                >
-                  <MoreHoriz fontSize="small" />
-                </IconButton>
               </Box>
 
               {/* Column Content */}
@@ -525,15 +511,12 @@ export function JobDetails() {
         }}
       >
         <MenuItem onClick={handleEdit}>
-          <Edit sx={{ mr: 1, fontSize: 20 }} />
           Edit Job
         </MenuItem>
         <MenuItem onClick={handleAssignUsers}>
-          <PersonAdd sx={{ mr: 1, fontSize: 20 }} />
           Assign Recruiter
         </MenuItem>
         <MenuItem onClick={handleDeleteFromMenu} sx={{ color: 'error.main' }}>
-          <Delete sx={{ mr: 1, fontSize: 20 }} />
           Delete Job
         </MenuItem>
       </Menu>
