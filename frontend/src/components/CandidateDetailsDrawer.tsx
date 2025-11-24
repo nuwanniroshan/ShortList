@@ -337,6 +337,29 @@ export function CandidateDetailsDrawer({
               </>
             )}
 
+            {/* Education Section */}
+            {candidate.education && candidate.education.length > 0 && (
+              <>
+                <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, color: "text.primary" }}>
+                  Education
+                </Typography>
+                {candidate.education.map((edu: any, index: number) => (
+                  <Box key={index} sx={{ mb: 2 }}>
+                    <Typography variant="body2" fontWeight="medium">{edu.degree}</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{edu.institution}</Typography>
+                    {(edu.startDate || edu.endDate) && (
+                      <Typography variant="caption" color="text.secondary">
+                        {edu.startDate && new Date(edu.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {edu.startDate && edu.endDate && ' - '}
+                        {edu.endDate && new Date(edu.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+                <Divider sx={{ my: 2 }} />
+              </>
+            )}
+
             {/* Experience Section */}
             {candidate.experience && candidate.experience.length > 0 && (
               <>
@@ -345,12 +368,20 @@ export function CandidateDetailsDrawer({
                 </Typography>
                 {candidate.experience.map((exp: any, index: number) => (
                   <Box key={index} sx={{ mb: 2 }}>
-                    <Typography variant="body2" fontWeight="medium">{exp.title}</Typography>
-                    <Typography variant="caption" color="text.secondary">{exp.company}</Typography>
+                    <Typography variant="body2" fontWeight="medium">{exp.position || exp.title}</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">{exp.company}</Typography>
+                    {(exp.startDate || exp.endDate) && (
+                      <Typography variant="caption" color="text.secondary">
+                        {exp.startDate && new Date(exp.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {exp.startDate && exp.endDate && ' - '}
+                        {exp.endDate && new Date(exp.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </Typography>
+                    )}
                   </Box>
                 ))}
               </>
             )}
+
           </Box>
 
           {/* Actions */}
