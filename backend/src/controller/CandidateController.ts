@@ -209,7 +209,85 @@ export class CandidateController {
     }
   }
 
+  static async updateNotes(req: Request, res: Response) {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    const candidateRepository = AppDataSource.getRepository(Candidate);
+    const candidate = await candidateRepository.findOne({ where: { id: id as string } });
+
+    if (!candidate) {
+      return res.status(404).json({ message: "Candidate not found" });
+    }
+
+    candidate.notes = notes;
+
+    try {
+      await candidateRepository.save(candidate);
+      return res.json(candidate);
+    } catch (error) {
+      return res.status(500).json({ message: "Error updating notes", error });
+    }
+  }
+
+  static async uploadCv(req: Request, res: Response) {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: "CV file is required" });
+    }
+
+    // Validate file type
+    const validTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!validTypes.includes(file.mimetype)) {
+      // Delete uploaded file
+      fs.unlinkSync(file.path);
+      return res.status(400).json({ message: "Only PDF, DOC, and DOCX files are allowed" });
+    }
+
+    // Validate file size (6MB max)
+    if (file.size > 6 * 1024 * 1024) {
+      // Delete uploaded file
+      fs.unlinkSync(file.path);
+      return res.status(400).json({ message: "File size must not exceed 6MB" });
+    }
+
+    const candidateRepository = AppDataSource.getRepository(Candidate);
+    
+    try {
+      const candidate = await candidateRepository.findOne({ where: { id: id as string } });
+      if (!candidate) {
+        // Delete uploaded file
+        fs.unlinkSync(file.path);
+        return res.status(404).json({ message: "Candidate not found" });
+      }
+
+      // Delete old CV file if exists
+      if (candidate.cv_file_path && fs.existsSync(candidate.cv_file_path)) {
+        try {
+          fs.unlinkSync(candidate.cv_file_path);
+        } catch (err) {
+          console.error("Failed to delete old CV file:", err);
+        }
+      }
+
+      // Update candidate with new CV path
+      candidate.cv_file_path = file.path;
+      await candidateRepository.save(candidate);
+
+      return res.json({ message: "CV uploaded successfully", candidate });
+    } catch (error) {
+      // Delete uploaded file on error
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+      return res.status(500).json({ message: "Error uploading CV", error });
+    }
+  }
+
   static async delete(req: Request, res: Response) {
+
     const { id } = req.params;
     const candidateRepository = AppDataSource.getRepository(Candidate);
     const commentRepository = AppDataSource.getRepository(Comment);

@@ -53,6 +53,8 @@ router.get("/jobs/:jobId/candidates", auth, checkJobAssignment, CandidateControl
 router.get("/candidates/:id/cv", auth, CandidateController.getCv);
 router.get("/candidates/:id/profile-picture", CandidateController.getProfilePicture);
 router.patch("/candidates/:id/status", auth, checkJobNotClosed, CandidateController.updateStatus);
+router.patch("/candidates/:id/notes", auth, CandidateController.updateNotes);
+router.patch("/candidates/:id/cv", auth, checkRole([UserRole.RECRUITER, UserRole.ADMIN, UserRole.HR]), upload.single('cv'), CandidateController.uploadCv);
 router.delete("/candidates/:id", auth, CandidateController.delete);
 
 // Comment routes

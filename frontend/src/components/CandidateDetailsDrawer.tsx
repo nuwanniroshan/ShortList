@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -122,6 +122,8 @@ export function CandidateDetailsDrawer({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [activityHistory, setActivityHistory] = useState<ActivityLog[]>([]);
+  const [isUploadingCv, setIsUploadingCv] = useState(false);
+  const cvFileInputRef = useRef<HTMLInputElement>(null);
   
   // Hardcoded questionnaire data
   const [questionnaires] = useState({
@@ -248,9 +250,55 @@ export function CandidateDetailsDrawer({
     }
   };
 
-  const handleCvUpload = () => {
-    // TODO: Implement CV upload functionality
-    alert("CV upload functionality will be implemented soon");
+  const handleCvUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !candidate) return;
+
+    // Validate file size (6MB max)
+    if (file.size > 6 * 1024 * 1024) {
+      alert("File size must not exceed 6MB");
+      return;
+    }
+
+    // Validate file type
+    const validTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+    if (!validTypes.includes(file.type)) {
+      alert("Only PDF, DOC, and DOCX files are allowed");
+      return;
+    }
+
+    setIsUploadingCv(true);
+    try {
+      const formData = new FormData();
+      formData.append('cv', file);
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/candidates/${candidate.id}/cv`, {
+        method: "PATCH",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload CV");
+      }
+
+      // Reload CV after successful upload
+      loadCv();
+      onUpdate();
+      alert("CV uploaded successfully");
+    } catch (err) {
+      console.error("Failed to upload CV", err);
+      alert("Failed to upload CV");
+    } finally {
+      setIsUploadingCv(false);
+      // Reset file input
+      if (cvFileInputRef.current) {
+        cvFileInputRef.current.value = '';
+      }
+    }
   };
 
   if (!candidate) return null;
@@ -349,9 +397,9 @@ export function CandidateDetailsDrawer({
                     <Typography variant="caption" color="text.secondary" display="block">{edu.institution}</Typography>
                     {(edu.startDate || edu.endDate) && (
                       <Typography variant="caption" color="text.secondary">
-                        {edu.startDate && new Date(edu.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {edu.startDate}
                         {edu.startDate && edu.endDate && ' - '}
-                        {edu.endDate && new Date(edu.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {edu.endDate}
                       </Typography>
                     )}
                   </Box>
@@ -372,9 +420,9 @@ export function CandidateDetailsDrawer({
                     <Typography variant="caption" color="text.secondary" display="block">{exp.company}</Typography>
                     {(exp.startDate || exp.endDate) && (
                       <Typography variant="caption" color="text.secondary">
-                        {exp.startDate && new Date(exp.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {exp.startDate}
                         {exp.startDate && exp.endDate && ' - '}
-                        {exp.endDate && new Date(exp.endDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {exp.endDate}
                       </Typography>
                     )}
                   </Box>
@@ -527,14 +575,24 @@ export function CandidateDetailsDrawer({
                       No {documentType.replace('_', ' ')} available
                     </Typography>
                     {isRecruiter && (
-                      <Button 
-                        variant="contained" 
-                        startIcon={<Upload />}
-                        onClick={handleCvUpload}
-                        sx={{ mt: 2 }}
-                      >
-                        Upload CV
-                      </Button>
+                      <>
+                        <input
+                          type="file"
+                          ref={cvFileInputRef}
+                          style={{ display: 'none' }}
+                          accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                          onChange={handleCvUpload}
+                        />
+                        <Button 
+                          variant="contained" 
+                          startIcon={<Upload />}
+                          onClick={() => cvFileInputRef.current?.click()}
+                          disabled={isUploadingCv}
+                          sx={{ mt: 2 }}
+                        >
+                          {isUploadingCv ? "Uploading..." : "Upload CV"}
+                        </Button>
+                      </>
                     )}
                   </Box>
                 )}
