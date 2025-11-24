@@ -18,4 +18,16 @@ export class Comment {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @Column("text", { nullable: true })
+  attachment_path: string;
+
+  @Column("text", { nullable: true })
+  attachment_original_name: string;
+
+  @Column("text", { nullable: true })
+  attachment_type: string;
+
+  @Column("int", { nullable: true })
+  attachment_size: number;
 }

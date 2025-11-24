@@ -60,8 +60,10 @@ router.get("/candidates/:id/pipeline-history", auth, PipelineHistoryController.g
 router.delete("/candidates/:id", auth, CandidateController.delete);
 
 // Comment routes
-router.post("/candidates/:candidateId/comments", auth, CommentController.create);
+router.post("/candidates/:candidateId/comments", auth, upload.single('attachment'), CommentController.create);
 router.get("/candidates/:candidateId/comments", auth, CommentController.listByCandidate);
+router.get("/comments/:id/attachment", auth, CommentController.getAttachment);
+router.delete("/comments/:id/attachment", auth, CommentController.deleteAttachment);
 
 // Pipeline Status routes
 const pipelineStatusController = new PipelineStatusController();

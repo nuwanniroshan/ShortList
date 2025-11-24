@@ -82,9 +82,14 @@ interface Comment {
   text: string;
   created_at: string;
   created_by: {
+    id: string;
     email: string;
     name?: string;
   };
+  attachment_path?: string;
+  attachment_original_name?: string;
+  attachment_type?: string;
+  attachment_size?: number;
 }
 
 interface ActivityLog {
@@ -118,6 +123,7 @@ export function CandidateDetailsDrawer({
   const [activeTab, setActiveTab] = useState(0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [notes, setNotes] = useState("");
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -191,13 +197,29 @@ export function CandidateDetailsDrawer({
   };
 
   const handleAddComment = async () => {
-    if (!candidate || !newComment.trim()) return;
+    if (!candidate || (!newComment.trim() && !attachment)) return;
     try {
-      await request(`/candidates/${candidate.id}/comments`, {
-        method: "POST",
-        body: JSON.stringify({ text: newComment }),
+      const formData = new FormData();
+      formData.append('text', newComment);
+      if (attachment) {
+          formData.append('attachment', attachment);
+      }
+
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/candidates/${candidate.id}/comments`, {
+          method: "POST",
+          headers: {
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData
       });
+
+      if (!response.ok) {
+          throw new Error("Failed to add comment");
+      }
+
       setNewComment("");
+      setAttachment(null);
       loadComments();
     } catch (err) {
       console.error("Failed to add comment", err);
@@ -477,6 +499,7 @@ export function CandidateDetailsDrawer({
               <Tab label="Questionaries" />
               <Tab label="Notes" />
               <Tab label="Pipeline History" />
+              <Tab label="Attachments" />
             </Tabs>
           </Box>
 
@@ -666,6 +689,69 @@ export function CandidateDetailsDrawer({
                 )}
               </Box>
             )}
+            {/* Attachments Tab */}
+            {activeTab === 4 && (
+              <Box>
+                <Typography variant="h6" gutterBottom>Attachments</Typography>
+                {comments.filter(c => c.attachment_path).length === 0 ? (
+                  <Typography color="text.secondary" textAlign="center" sx={{ mt: 4 }}>
+                    No attachments found
+                  </Typography>
+                ) : (
+                  <List>
+                    {comments.filter(c => c.attachment_path).map((comment) => (
+                      <ListItem key={comment.id} sx={{ borderBottom: "1px solid", borderColor: "divider" }}>
+                        <ListItemAvatar>
+                          <Avatar sx={{ bgcolor: "primary.light" }}>
+                            <Description />
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={comment.attachment_original_name}
+                          secondary={
+                            <>
+                              <Typography variant="caption" display="block">
+                                Uploaded by {comment.created_by.name || comment.created_by.email} on {new Date(comment.created_at).toLocaleDateString()}
+                              </Typography>
+                              <Typography variant="caption" display="block">
+                                Size: {comment.attachment_size ? (comment.attachment_size / 1024).toFixed(2) : '0'} KB
+                              </Typography>
+                            </>
+                          }
+                        />
+                        <Box>
+                          <IconButton 
+                            component="a" 
+                            href={`${API_URL}/comments/${comment.id}/attachment?token=${localStorage.getItem("token")}`}
+                            target="_blank"
+                            download
+                          >
+                            <Download />
+                          </IconButton>
+                          {(user.id === comment.created_by.id || user.role === 'admin') && (
+                             <IconButton 
+                               color="error"
+                               onClick={async () => {
+                                 if (window.confirm("Are you sure you want to delete this attachment?")) {
+                                   try {
+                                     await request(`/comments/${comment.id}/attachment`, { method: "DELETE" });
+                                     loadComments();
+                                   } catch (err) {
+                                     console.error("Failed to delete attachment", err);
+                                   }
+                                 }
+                               }}
+                             >
+                               <Close />
+                             </IconButton>
+                          )}
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
+              </Box>
+            )}
           </Box>
 
           {/* Comments Section - Collapsible at bottom */}
@@ -726,9 +812,25 @@ export function CandidateDetailsDrawer({
                               </Box>
                             }
                             secondary={
-                              <Typography variant="body2" sx={{ mt: 0.5 }}>
-                                {comment.text}
-                              </Typography>
+                              <Box>
+                                <Typography variant="body2" sx={{ mt: 0.5 }}>
+                                  {comment.text}
+                                </Typography>
+                                {comment.attachment_path && (
+                                  <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 1 }}>
+                                    <Chip 
+                                      icon={<Description />} 
+                                      label={comment.attachment_original_name} 
+                                      size="small" 
+                                      variant="outlined"
+                                      component="a"
+                                      href={`${API_URL}/comments/${comment.id}/attachment?token=${localStorage.getItem("token")}`}
+                                      target="_blank"
+                                      clickable
+                                    />
+                                  </Box>
+                                )}
+                              </Box>
                             }
                           />
                         </ListItem>
@@ -739,32 +841,58 @@ export function CandidateDetailsDrawer({
 
                 {/* Add Comment Input - Fixed at bottom */}
                 <Box sx={{ p: 2, pt: 1, borderTop: "1px solid", borderColor: "divider" }}>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Add a comment..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
-                    />
-                    <IconButton 
-                      color="primary" 
-                      onClick={handleAddComment} 
-                      disabled={!newComment.trim()}
-                      sx={{ 
-                        bgcolor: newComment.trim() ? "primary.main" : "action.disabledBackground",
-                        color: newComment.trim() ? "white" : "action.disabled",
-                        "&:hover": {
-                          bgcolor: newComment.trim() ? "primary.dark" : "action.disabledBackground"
-                        },
-                        borderRadius: 1,
-                        width: 40,
-                        height: 40
-                      }}
-                    >
-                      <Send fontSize="small" />
-                    </IconButton>
+                  <Box sx={{ display: "flex", gap: 1, flexDirection: 'column' }}>
+                    {attachment && (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                            <Chip 
+                                label={attachment.name} 
+                                onDelete={() => setAttachment(null)} 
+                                size="small"
+                            />
+                        </Box>
+                    )}
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                        <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Add a comment..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleAddComment()}
+                        />
+                        <input
+                            type="file"
+                            id="comment-attachment"
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                    setAttachment(e.target.files[0]);
+                                }
+                            }}
+                        />
+                        <label htmlFor="comment-attachment">
+                            <IconButton component="span" color={attachment ? "primary" : "default"}>
+                                <Upload />
+                            </IconButton>
+                        </label>
+                        <IconButton 
+                        color="primary" 
+                        onClick={handleAddComment} 
+                        disabled={!newComment.trim() && !attachment}
+                        sx={{ 
+                            bgcolor: (newComment.trim() || attachment) ? "primary.main" : "action.disabledBackground",
+                            color: (newComment.trim() || attachment) ? "white" : "action.disabled",
+                            "&:hover": {
+                            bgcolor: (newComment.trim() || attachment) ? "primary.dark" : "action.disabledBackground"
+                            },
+                            borderRadius: 1,
+                            width: 40,
+                            height: 40
+                        }}
+                        >
+                        <Send fontSize="small" />
+                        </IconButton>
+                    </Box>
                   </Box>
                 </Box>
               </>

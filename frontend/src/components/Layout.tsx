@@ -14,13 +14,14 @@ import {
   ListItemText, 
   IconButton,
   useTheme,
-  useMediaQuery,
   Avatar,
   InputBase,
   Badge,
   Menu,
   MenuItem,
-  Divider
+  Divider,
+  Breadcrumbs,
+  Link
 } from "@mui/material";
 import { 
   Menu as MenuIcon, 
@@ -28,8 +29,6 @@ import {
   Work as WorkIcon, 
   People as PeopleIcon, 
   Settings as SettingsIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
   Search as SearchIcon,
   Notifications as NotificationsIcon,
   Lightbulb as LightbulbIcon,
@@ -46,11 +45,12 @@ const COLLAPSED_DRAWER_WIDTH = 72;
 export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const pathnames = location.pathname.split('/').filter((x) => x);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // const isMobile = useMediaQuery(theme.breakpoints.down("md")); // Unused for now
   
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed] = useState(false); // Fixed to false for now as button is removed
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -59,9 +59,9 @@ export function Layout({ children }: LayoutProps) {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleCollapseToggle = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  // const handleCollapseToggle = () => {
+  //   setIsCollapsed(!isCollapsed);
+  // };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -81,73 +81,85 @@ export function Layout({ children }: LayoutProps) {
 
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/dashboard" },
-    { text: "Jobs", icon: <WorkIcon />, path: "/dashboard" }, // Assuming jobs are on dashboard for now
-    { text: "Candidates", icon: <PeopleIcon />, path: "/candidates" }, // Placeholder path
-    { text: "Settings", icon: <SettingsIcon />, path: "/settings" }, // Placeholder path
+    { text: "Jobs", icon: <WorkIcon />, path: "/dashboard" },
+    { text: "Candidates", icon: <PeopleIcon />, path: "/candidates" },
+    { text: "Settings", icon: <SettingsIcon />, path: "/settings" },
   ];
 
   const drawerContent = (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: isCollapsed ? "center" : "space-between" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "#fff" }}>
+      <Box sx={{ p: 3, display: "flex", alignItems: "center", justifyContent: isCollapsed ? "center" : "space-between" }}>
         {!isCollapsed && (
-          <Typography variant="h6" color="primary" sx={{ fontWeight: 800, display: "flex", alignItems: "center", gap: 1 }}>
-            <Box component="span" sx={{ bgcolor: "primary.main", width: 24, height: 24, borderRadius: 1, display: "inline-block" }} />
+          <Typography variant="h6" color="text.primary" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 1.5, fontSize: '1.25rem' }}>
             Shortlist
           </Typography>
         )}
         {isCollapsed && (
            <Box component="span" sx={{ bgcolor: "primary.main", width: 24, height: 24, borderRadius: 1, display: "inline-block" }} />
         )}
-        {!isMobile && (
-          <IconButton 
-            onClick={handleCollapseToggle} 
-            size="small"
-            sx={{ 
-              borderRadius: 1,
-              width: 32,
-              height: 32
-            }}
-          >
-             {isCollapsed ? <ChevronRightIcon fontSize="small" /> : <ChevronLeftIcon fontSize="small" />}
-          </IconButton>
-        )}
       </Box>
 
-      <List sx={{ px: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding sx={{ display: "block", mb: 0.5 }}>
-            <ListItemButton
-              onClick={() => navigate(item.path)}
-              selected={location.pathname === item.path}
-              sx={{
-                minHeight: 48,
-                justifyContent: isCollapsed ? "center" : "initial",
-                px: 2.5,
-                borderRadius: 2,
-                "&.Mui-selected": {
-                  bgcolor: "primary.light",
-                  color: "primary.main",
-                  "& .MuiListItemIcon-root": {
-                    color: "primary.main",
-                  },
-                },
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: isCollapsed ? 0 : 2,
-                  justifyContent: "center",
-                  color: "text.secondary",
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.text} sx={{ opacity: isCollapsed ? 0 : 1 }} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-      </List>
+      <Box sx={{ px: 3, py: 2 }}>
+        {!isCollapsed && (
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600, letterSpacing: 1, mb: 2, display: "block" }}>
+            MAIN
+          </Typography>
+        )}
+        <List sx={{ p: 0 }}>
+          {menuItems.map((item) => {
+            const isSelected = location.pathname === item.path;
+            return (
+              <ListItem key={item.text} disablePadding sx={{ display: "block", mb: 1 }}>
+                <ListItemButton
+                  onClick={() => navigate(item.path)}
+                  selected={isSelected}
+                  sx={{
+                    minHeight: 44,
+                    justifyContent: isCollapsed ? "center" : "initial",
+                    px: 2,
+                    borderRadius: 2,
+                    bgcolor: "transparent",
+                    "&.Mui-selected": {
+                      bgcolor: "transparent",
+                      color: "primary.main",
+                      "& .MuiListItemIcon-root": {
+                        color: "primary.main",
+                      },
+                      "& .MuiTypography-root": {
+                        fontWeight: 600,
+                      },
+                    },
+                    "&:hover": {
+                      bgcolor: "action.hover",
+                    },
+                  }}
+                >
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: isCollapsed ? 0 : 2,
+                      justifyContent: "center",
+                      color: isSelected ? "primary.main" : "text.secondary",
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={item.text} 
+                    primaryTypographyProps={{ 
+                      fontSize: '0.95rem',
+                      fontWeight: isSelected ? 600 : 500,
+                      color: isSelected ? "primary.main" : "text.secondary"
+                    }}
+                    sx={{ opacity: isCollapsed ? 0 : 1 }} 
+                  />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
+
       
       <Box sx={{ mt: "auto", p: 2 }}>
           {!isCollapsed && (
@@ -370,6 +382,28 @@ export function Layout({ children }: LayoutProps) {
           mt: 8,
         }}
       >
+        <Box sx={{ mb: 2 }}>
+          <Breadcrumbs aria-label="breadcrumb">
+            <Link underline="hover" color="inherit" href="/dashboard" onClick={(e) => { e.preventDefault(); navigate("/dashboard"); }}>
+              Home
+            </Link>
+            {pathnames.map((value, index) => {
+              const last = index === pathnames.length - 1;
+              const to = `/${pathnames.slice(0, index + 1).join('/')}`;
+              const name = value.charAt(0).toUpperCase() + value.slice(1).replace(/-/g, ' ');
+
+              return last ? (
+                <Typography color="text.primary" key={to}>
+                  {name}
+                </Typography>
+              ) : (
+                <Link underline="hover" color="inherit" href={to} onClick={(e) => { e.preventDefault(); navigate(to); }} key={to}>
+                  {name}
+                </Link>
+              );
+            })}
+          </Breadcrumbs>
+        </Box>
         {children}
       </Box>
     </Box>
