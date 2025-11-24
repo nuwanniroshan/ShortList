@@ -60,7 +60,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
       
       - name: Install CDK dependencies
         working-directory: ./infrastructure
@@ -108,7 +108,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
       
       - name: Login to Amazon ECR
         id: login-ecr
@@ -132,14 +132,14 @@ jobs:
             --cluster shortlist-qa-cluster \
             --service shortlist-qa-service \
             --force-new-deployment \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ secrets.AWS_REGION }}
       
       - name: Wait for ECS service stability
         run: |
           aws ecs wait services-stable \
             --cluster shortlist-qa-cluster \
             --services shortlist-qa-service \
-            --region ${{ env.AWS_REGION }}
+            --region ${{ secrets.AWS_REGION }}
 
   deploy-frontend:
     name: Deploy Frontend to S3
@@ -162,7 +162,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
       
       - name: Install frontend dependencies
         working-directory: ./frontend
