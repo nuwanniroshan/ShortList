@@ -7,6 +7,7 @@ import { JobDetails } from "./pages/JobDetails";
 import { AdminUsers } from "./pages/AdminUsers";
 import { Settings } from "./pages/Settings";
 import { AddCandidate } from "./pages/AddCandidate";
+import { Candidates } from "./pages/Candidates";
 import { SnackbarProvider } from "./context/SnackbarContext";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "@mui/material/styles";
@@ -28,6 +29,7 @@ function App() {
             <Route path="/jobs/:id/edit" element={<Layout><EditJob /></Layout>} />
             <Route path="/admin/users" element={<Layout><AdminUsers /></Layout>} />
             <Route path="/settings" element={<Layout><Settings /></Layout>} />
+            <Route path="/candidates" element={<Layout><Candidates /></Layout>} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </BrowserRouter>

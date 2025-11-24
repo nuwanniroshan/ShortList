@@ -134,6 +134,33 @@ export class CandidateController {
     }
   }
 
+  static async getAll(req: Request, res: Response) {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 25;
+    const skip = (page - 1) * limit;
+
+    const candidateRepository = AppDataSource.getRepository(Candidate);
+
+    try {
+      const [candidates, total] = await candidateRepository.findAndCount({
+        relations: ["job"],
+        order: { created_at: "DESC" },
+        skip,
+        take: limit,
+      });
+
+      return res.json({
+        data: candidates,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (error) {
+      return res.status(500).json({ message: "Error fetching candidates", error });
+    }
+  }
+
   static async updateStatus(req: Request, res: Response) {
     const { id } = req.params;
     const { status, interview_date, interview_link } = req.body;

@@ -50,6 +50,7 @@ router.post("/candidates", auth, checkRole([UserRole.RECRUITER, UserRole.ADMIN, 
   { name: 'cover_letter', maxCount: 1 },
   { name: 'profile_picture', maxCount: 1 }
 ]), checkJobAssignment, checkJobNotClosed, CandidateController.create);
+router.get("/candidates", auth, CandidateController.getAll);
 router.get("/jobs/:jobId/candidates", auth, checkJobAssignment, CandidateController.listByJob);
 router.get("/candidates/:id/cv", auth, CandidateController.getCv);
 router.get("/candidates/:id/profile-picture", CandidateController.getProfilePicture);
