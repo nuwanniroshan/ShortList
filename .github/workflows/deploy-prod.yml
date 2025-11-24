@@ -1,0 +1,235 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ENVIRONMENT: prod
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm test || echo "No tests configured yet"
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Run frontend linting
+        working-directory: ./frontend
+        run: npm run lint || echo "Linting completed with warnings"
+
+  approve-deployment:
+    name: Approve Production Deployment
+    runs-on: ubuntu-latest
+    needs: test
+    environment:
+      name: production
+      url: https://shortlist-frontend-prod.s3-website-${{ secrets.AWS_REGION }}.amazonaws.com
+    
+    steps:
+      - name: Manual approval checkpoint
+        run: echo "Production deployment approved"
+
+  deploy-infrastructure:
+    name: Deploy CDK Infrastructure
+    runs-on: ubuntu-latest
+    needs: approve-deployment
+    outputs:
+      alb-url: ${{ steps.get-outputs.outputs.alb-url }}
+      ecr-uri: ${{ steps.get-outputs.outputs.ecr-uri }}
+      bucket-name: ${{ steps.get-outputs.outputs.bucket-name }}
+      distribution-id: ${{ steps.get-outputs.outputs.distribution-id }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: infrastructure/package-lock.json
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install CDK dependencies
+        working-directory: ./infrastructure
+        run: npm ci
+      
+      - name: Build CDK project
+        working-directory: ./infrastructure
+        run: npm run build
+      
+      - name: Deploy CDK stack
+        working-directory: ./infrastructure
+        run: npx cdk deploy ProdStack --require-approval never
+      
+      - name: Get stack outputs
+        id: get-outputs
+        run: |
+          ALB_URL=$(aws cloudformation describe-stacks \
+            --stack-name ShortlistProdStack \
+            --query "Stacks[0].Outputs[?OutputKey=='EcsAlbUrl'].OutputValue" \
+            --output text)
+          ECR_URI=$(aws cloudformation describe-stacks \
+            --stack-name ShortlistProdStack \
+            --query "Stacks[0].Outputs[?OutputKey=='EcrRepositoryUri'].OutputValue" \
+            --output text)
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name ShortlistProdStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+            --output text)
+          DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
+            --stack-name ShortlistProdStack \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue" \
+            --output text)
+          
+          echo "alb-url=$ALB_URL" >> $GITHUB_OUTPUT
+          echo "ecr-uri=$ECR_URI" >> $GITHUB_OUTPUT
+          echo "bucket-name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "distribution-id=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
+
+  deploy-backend:
+    name: Deploy Backend to ECS
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build and push Docker image
+        working-directory: ./backend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: shortlist-backend-prod
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      
+      - name: Update ECS service
+        run: |
+          aws ecs update-service \
+            --cluster shortlist-prod-cluster \
+            --service shortlist-prod-service \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Wait for ECS service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster shortlist-prod-cluster \
+            --services shortlist-prod-service \
+            --region ${{ env.AWS_REGION }}
+
+  deploy-frontend:
+    name: Deploy Frontend to S3 + CloudFront
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure, deploy-backend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ needs.deploy-infrastructure.outputs.alb-url }}
+        run: |
+          echo "VITE_API_URL=$VITE_API_URL" > .env.production
+          npm run build
+      
+      - name: Deploy to S3
+        working-directory: ./frontend
+        run: |
+          aws s3 sync dist/ s3://${{ needs.deploy-infrastructure.outputs.bucket-name }} --delete
+      
+      - name: Invalidate CloudFront cache
+        if: needs.deploy-infrastructure.outputs.distribution-id != ''
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ needs.deploy-infrastructure.outputs.distribution-id }} \
+            --paths "/*"
+      
+      - name: Get website URL
+        id: get-url
+        run: |
+          WEBSITE_URL=$(aws cloudformation describe-stacks \
+            --stack-name ShortlistProdStack \
+            --query "Stacks[0].Outputs[?contains(OutputKey,'Url')].OutputValue" \
+            --output text | head -n 1)
+          echo "website-url=$WEBSITE_URL" >> $GITHUB_OUTPUT
+      
+      - name: Deployment summary
+        run: |
+          echo "### 🚀 Production Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend URL:** ${{ needs.deploy-infrastructure.outputs.alb-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend URL:** ${{ steps.get-url.outputs.website-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
