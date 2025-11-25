@@ -148,6 +148,13 @@ jobs:
           ECR_REPOSITORY: shortlist-backend-prod
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          # Ensure ECR repository exists (idempotent)
+          REPO="shortlist-backend-${ENVIRONMENT}"
+          if ! aws ecr describe-repositories --repository-names "$REPO" --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Creating ECR repository $REPO..."
+            aws ecr create-repository --repository-name "$REPO" --region ${{ secrets.AWS_REGION }}
+          fi
+          
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -206,7 +213,25 @@ jobs:
       - name: Deploy to S3
         working-directory: ./frontend
         run: |
-          aws s3 sync dist/ s3://${{ needs.deploy-infrastructure.outputs.bucket-name }} --delete
+          # Ensure S3 bucket exists (idempotent)
+          BUCKET="${{ needs.deploy-infrastructure.outputs.bucket-name }}"
+          if ! aws s3api head-bucket --bucket "$BUCKET" --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Bucket $BUCKET does not exist; it should be created by CloudFormation. Continuing..."
+          fi
+          # Sync with retry logic
+          MAX_ATTEMPTS=2
+          attempt=1
+          while true; do
+            if aws s3 sync dist/ "s3://$BUCKET" --delete --region ${{ secrets.AWS_REGION }}; then
+              break
+            fi
+            if [ $attempt -ge $MAX_ATTEMPTS ]; then
+              echo "❌ S3 sync failed after $MAX_ATTEMPTS attempts."
+              exit 1
+            fi
+            echo "⚠️  Retry S3 sync (attempt $((attempt+1)))..."
+            attempt=$((attempt+1))
+          done
       
       - name: Invalidate CloudFront cache
         if: needs.deploy-infrastructure.outputs.distribution-id != ''

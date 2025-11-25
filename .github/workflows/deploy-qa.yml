@@ -121,6 +121,13 @@ jobs:
           ECR_REPOSITORY: shortlist-backend-qa
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          # Ensure ECR repository exists (idempotent)
+          REPO="shortlist-backend-${ENVIRONMENT}"
+          if ! aws ecr describe-repositories --repository-names "$REPO" --region ${{ secrets.AWS_REGION }} >/dev/null 2>&1; then
+            echo "Creating ECR repository $REPO..."
+            aws ecr create-repository --repository-name "$REPO" --region ${{ secrets.AWS_REGION }}
+          fi
+          
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
