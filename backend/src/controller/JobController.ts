@@ -3,6 +3,7 @@ import { AppDataSource } from "../data-source";
 import { Job, JobStatus } from "../entity/Job";
 import { User, UserRole } from "../entity/User";
 import { EmailService } from "../service/EmailService";
+import { Notification, NotificationType } from "../entity/Notification";
 
 export class JobController {
   static async create(req: Request, res: Response) {
@@ -61,8 +62,17 @@ export class JobController {
       
       // Send email notifications to newly assigned recruiters (excluding creator)
       const recruitersToNotify = assignees.filter(a => a.id !== creator.id);
-      recruitersToNotify.forEach(recruiter => {
+      const notificationRepository = AppDataSource.getRepository(Notification);
+      recruitersToNotify.forEach(async recruiter => {
         EmailService.notifyJobAssignment(recruiter.email, job.title, job.description, startDate, expectedClosingDate);
+        
+        // Create notification
+        const notification = new Notification();
+        notification.user = recruiter;
+        notification.type = NotificationType.JOB_ASSIGNED;
+        notification.message = `You have been assigned to a new job: ${job.title}`;
+        notification.relatedEntityId = parseInt(job.id as any) || 0;
+        await notificationRepository.save(notification);
       });
       
       return res.status(201).json(job);
@@ -196,10 +206,20 @@ export class JobController {
       await jobRepository.save(job);
 
       // Send email notifications to newly assigned users
-      newlyAssignedUsers.forEach(user => {
+      const notificationRepository = AppDataSource.getRepository(Notification);
+      // Send email notifications to newly assigned users
+      newlyAssignedUsers.forEach(async user => {
         const startDate = job.start_date || new Date();
         const expectedClosingDate = job.expected_closing_date || new Date();
         EmailService.notifyJobAssignment(user.email, job.title, job.description, startDate, expectedClosingDate);
+
+        // Create notification
+        const notification = new Notification();
+        notification.user = user;
+        notification.type = NotificationType.JOB_ASSIGNED;
+        notification.message = `You have been assigned to a new job: ${job.title}`;
+        notification.relatedEntityId = parseInt(job.id as any) || 0;
+        await notificationRepository.save(notification);
       });
 
       return res.json(job);

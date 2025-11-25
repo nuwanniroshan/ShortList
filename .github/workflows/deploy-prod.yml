@@ -9,7 +9,6 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
   ENVIRONMENT: prod
 
 jobs:
@@ -50,7 +49,6 @@ jobs:
     needs: test
     environment:
       name: production
-      url: https://shortlist-frontend-prod.s3-website-${{ secrets.AWS_REGION }}.amazonaws.com
     
     steps:
       - name: Manual approval checkpoint
