@@ -9,6 +9,7 @@ import path from "path";
 import sharp from "sharp";
 import fs from "fs";
 import { EmailService } from "../service/EmailService";
+import { Notification, NotificationType } from "../entity/Notification";
 
 // Configure Multer for file upload
 const storage = multer.diskStorage({
@@ -108,9 +109,18 @@ export class CandidateController {
 
       // Notify all assignees of the job
       const jobWithAssignees = await jobRepository.findOne({ where: { id: jobId as string }, relations: ["assignees"] });
+      const notificationRepository = AppDataSource.getRepository(Notification);
       if (jobWithAssignees) {
-          jobWithAssignees.assignees.forEach(user => {
+          jobWithAssignees.assignees.forEach(async user => {
               EmailService.notifyCandidateUpload(user.email, candidate.name, job.title);
+              
+              // Create notification
+              const notification = new Notification();
+              notification.user = user;
+              notification.type = NotificationType.CANDIDATE_ADDED;
+              notification.message = `New candidate ${candidate.name} added to ${job.title}`;
+              notification.relatedEntityId = parseInt(candidate.id as any) || 0;
+              await notificationRepository.save(notification);
           });
       }
 
@@ -201,8 +211,17 @@ export class CandidateController {
       }
 
       // Notify assignees about status change
-      candidate.job.assignees.forEach(user => {
+      const notificationRepository = AppDataSource.getRepository(Notification);
+      candidate.job.assignees.forEach(async user => {
           EmailService.notifyStatusChange(user.email, candidate.name, status, candidate.job.title);
+          
+          // Create notification
+          const notification = new Notification();
+          notification.user = user;
+          notification.type = NotificationType.STATUS_CHANGE;
+          notification.message = `Candidate ${candidate.name} status changed to ${status} in ${candidate.job.title}`;
+          notification.relatedEntityId = parseInt(candidate.id as any) || 0;
+          await notificationRepository.save(notification);
       });
 
       return res.json(candidate);

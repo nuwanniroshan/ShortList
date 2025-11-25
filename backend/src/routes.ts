@@ -8,6 +8,7 @@ import { OfficeController } from "./controller/OfficeController";
 import { DepartmentController } from "./controller/DepartmentController";
 import { PipelineStatusController } from "./controller/PipelineStatusController";
 import { PipelineHistoryController } from "./controller/PipelineHistoryController";
+import { NotificationController } from "./controller/NotificationController";
 import { auth } from "./middleware/auth";
 import { checkRole, checkJobAssignment, checkJobOwnership, checkJobNotClosed } from "./middleware/checkRole";
 import { UserRole } from "./entity/User";
@@ -73,6 +74,11 @@ router.post("/pipeline-statuses", auth, checkRole([UserRole.ADMIN]), (req, res) 
 router.put("/pipeline-statuses/order", auth, checkRole([UserRole.ADMIN]), (req, res) => pipelineStatusController.updateOrder(req, res));
 router.patch("/pipeline-statuses/:id", auth, checkRole([UserRole.ADMIN]), (req, res) => pipelineStatusController.update(req, res));
 router.delete("/pipeline-statuses/:id", auth, checkRole([UserRole.ADMIN]), (req, res) => pipelineStatusController.delete(req, res));
+
+// Notification routes
+const notificationController = new NotificationController();
+router.get("/notifications", auth, (req, res) => notificationController.getNotifications(req, res));
+router.patch("/notifications/read", auth, (req, res) => notificationController.markAsRead(req, res));
 
 export default router;
 

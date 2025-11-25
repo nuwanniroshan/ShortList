@@ -21,7 +21,8 @@ import {
   MenuItem,
   Divider,
   Breadcrumbs,
-  Link
+  Link,
+  Popover
 } from "@mui/material";
 import { 
   Menu as MenuIcon, 
@@ -34,6 +35,8 @@ import {
   Lightbulb as LightbulbIcon,
   Language as LanguageIcon,
 } from "@mui/icons-material";
+import { useNotifications } from "../context/NotificationContext";
+import { NotificationList } from "./NotificationList";
 
 interface LayoutProps {
   children: ReactNode;
@@ -52,6 +55,8 @@ export function Layout({ children }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed] = useState(false); // Fixed to false for now as button is removed
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
+  const { unreadCount, markAllAsRead } = useNotifications();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -75,6 +80,18 @@ export function Layout({ children }: LayoutProps) {
     handleMenuClose();
     localStorage.clear();
     navigate("/");
+  };
+
+  const handleNotificationClick = (event: React.MouseEvent<HTMLElement>) => {
+    setNotificationAnchorEl(event.currentTarget);
+    // Mark all unread notifications as read when panel opens
+    if (unreadCount > 0) {
+      markAllAsRead();
+    }
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
   };
 
 
@@ -252,16 +269,36 @@ export function Layout({ children }: LayoutProps) {
             </IconButton>
             <IconButton 
               size="small"
+              onClick={handleNotificationClick}
               sx={{ 
                 borderRadius: 1,
                 width: 32,
                 height: 32
               }}
             >
-                <Badge badgeContent={4} color="error">
+                <Badge badgeContent={unreadCount} color="error">
                     <NotificationsIcon fontSize="small" />
                 </Badge>
             </IconButton>
+            <Popover
+              open={Boolean(notificationAnchorEl)}
+              anchorEl={notificationAnchorEl}
+              onClose={handleNotificationClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              PaperProps={{
+                elevation: 3,
+                sx: { mt: 1.5 }
+              }}
+            >
+              <NotificationList />
+            </Popover>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}>
                 <IconButton 
                   onClick={handleMenuOpen} 
