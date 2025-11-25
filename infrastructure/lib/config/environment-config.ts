@@ -70,7 +70,7 @@ export const DEV_CONFIG: EnvironmentConfig = {
   ecsConfig: {
     cpu: 256,
     memory: 512,
-    desiredCount: 1,
+    desiredCount: 0, // Start with 0, will be updated after Docker image is pushed
     minCapacity: 1,
     maxCapacity: 2,
     cpuTargetUtilization: 70,

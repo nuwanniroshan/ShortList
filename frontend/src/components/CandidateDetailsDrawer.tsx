@@ -40,9 +40,7 @@ import {
   Description,
   Send,
   Download,
-  OpenInNew,
   Upload,
-  History,
   ExpandMore,
   ExpandLess
 } from "@mui/icons-material";

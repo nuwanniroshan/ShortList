@@ -20,10 +20,12 @@ fi
 # Get ALB URL from CloudFormation if not provided
 if [ -z "$ALB_URL" ]; then
   echo "🔍 Fetching ALB URL from CloudFormation..."
-  STACK_NAME="Shortlist${ENVIRONMENT^}Stack"
+  # Capitalize first letter of environment for stack name
+  ENV_CAPITALIZED=$(echo $ENVIRONMENT | awk '{print toupper(substr($0,1,1))substr($0,2)}')
+  STACK_NAME="Shortlist${ENV_CAPITALIZED}Stack"
   ALB_URL=$(aws cloudformation describe-stacks \
     --stack-name $STACK_NAME \
-    --query "Stacks[0].Outputs[?OutputKey=='EcsAlbUrl'].OutputValue" \
+    --query "Stacks[0].Outputs[?contains(OutputKey,'EcsAlbUrl')].OutputValue" \
     --output text \
     --region $AWS_REGION)
   
@@ -57,10 +59,12 @@ npm run build
 
 # Get S3 bucket name from CloudFormation
 echo "🔍 Fetching S3 bucket name..."
-STACK_NAME="Shortlist${ENVIRONMENT^}Stack"
+# Use the same capitalized environment name
+ENV_CAPITALIZED=$(echo $ENVIRONMENT | awk '{print toupper(substr($0,1,1))substr($0,2)}')
+STACK_NAME="Shortlist${ENV_CAPITALIZED}Stack"
 BUCKET_NAME=$(aws cloudformation describe-stacks \
   --stack-name $STACK_NAME \
-  --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+  --query "Stacks[0].Outputs[?contains(OutputKey,'FrontendBucketName')].OutputValue" \
   --output text \
   --region $AWS_REGION)
 
@@ -80,7 +84,7 @@ if [ "$ENVIRONMENT" == "prod" ]; then
   echo "🔄 Invalidating CloudFront cache..."
   DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
     --stack-name $STACK_NAME \
-    --query "Stacks[0].Outputs[?OutputKey=='FrontendDistributionId'].OutputValue" \
+    --query "Stacks[0].Outputs[?contains(OutputKey,'FrontendDistributionId')].OutputValue" \
     --output text \
     --region $AWS_REGION)
   

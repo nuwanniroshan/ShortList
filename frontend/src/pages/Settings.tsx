@@ -40,7 +40,7 @@ export function Settings() {
   const isAdmin = user.role === "admin";
   const isHR = user.role === "hr";
 
-  const handleChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleChange = (_: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
 

@@ -32,7 +32,7 @@ cd "$(dirname "$0")/../backend"
 
 # Build Docker image
 echo "🔨 Building Docker image..."
-docker build -t $ECR_REPO:latest -t $ECR_REPO:$(git rev-parse --short HEAD) .
+docker build --platform linux/amd64 -t $ECR_REPO:latest -t $ECR_REPO:$(git rev-parse --short HEAD) .
 
 # Tag image for ECR
 docker tag $ECR_REPO:latest $ECR_URI:latest

@@ -10,14 +10,8 @@ dotenv.config();
 const app = express();
 
 // CORS configuration - allow frontend origins from environment variable
-const corsOrigins = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',')
-  : ['http://localhost:5173'];
-
-app.use(cors({
-  origin: corsOrigins,
-  credentials: true,
-}));
+const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['*'];
+app.use(cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
