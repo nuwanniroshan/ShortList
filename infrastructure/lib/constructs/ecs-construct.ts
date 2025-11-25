@@ -15,6 +15,7 @@ export interface EcsConstructProps {
   ecrRepository: ecr.Repository;
   dbSecret: secretsmanager.Secret;
   dbEndpoint: string;
+  ecsSecurityGroup?: ec2.SecurityGroup; // Optional: use existing security group
 }
 
 export class EcsConstruct extends Construct {
@@ -27,7 +28,7 @@ export class EcsConstruct extends Construct {
   constructor(scope: Construct, id: string, props: EcsConstructProps) {
     super(scope, id);
 
-    const { vpc, config, ecrRepository, dbSecret, dbEndpoint } = props;
+    const { vpc, config, ecrRepository, dbSecret, dbEndpoint, ecsSecurityGroup } = props;
 
     // Create ECS Cluster
     this.cluster = new ecs.Cluster(this, 'Cluster', {
@@ -36,8 +37,8 @@ export class EcsConstruct extends Construct {
       containerInsights: config.ecsConfig.enableContainerInsights,
     });
 
-    // Create security group for ECS tasks
-    this.securityGroup = new ec2.SecurityGroup(this, 'EcsSecurityGroup', {
+    // Use provided security group or create a new one
+    this.securityGroup = ecsSecurityGroup || new ec2.SecurityGroup(this, 'EcsSecurityGroup', {
       vpc,
       description: `Security group for ECS tasks (${config.environmentName})`,
       allowAllOutbound: true,
@@ -116,6 +117,7 @@ export class EcsConstruct extends Construct {
         DB_HOST: dbEndpoint,
         DB_PORT: '5432',
         DB_NAME: 'shortlist',
+        DB_SSL: 'true',
         // CORS_ORIGIN will be set via GitHub Actions with frontend URL
       },
       secrets: {

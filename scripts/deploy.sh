@@ -3,7 +3,19 @@
 # Manual deployment script for CDK infrastructure
 # Usage: ./deploy.sh [dev|qa|prod]
 
-set -e
+set -euo pipefail
+
+# Function to check required commands
+check_prereqs() {
+  for cmd in aws npm npx; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+      echo "❌ Error: $cmd is not installed. Please install it before proceeding."
+      exit 1
+    fi
+  done
+}
+
+check_prereqs
 
 ENVIRONMENT=${1:-dev}
 

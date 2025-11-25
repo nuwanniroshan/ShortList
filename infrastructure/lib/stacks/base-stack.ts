@@ -38,10 +38,10 @@ export class BaseStack extends cdk.Stack {
       environmentName: config.environmentName,
     });
 
-    // Create ECS security group first (needed by RDS)
-    const ecsSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, 'EcsSecurityGroupTemp', {
+    // Create ECS security group (needed by both ECS and RDS)
+    const ecsSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, 'EcsSecurityGroup', {
       vpc: this.vpc.vpc,
-      description: `Temporary security group for ECS tasks (${config.environmentName})`,
+      description: `Security group for ECS tasks (${config.environmentName})`,
       allowAllOutbound: true,
     });
 
@@ -59,10 +59,8 @@ export class BaseStack extends cdk.Stack {
       ecrRepository: this.ecr.repository,
       dbSecret: this.rds.secret,
       dbEndpoint: this.rds.instance.dbInstanceEndpointAddress,
+      ecsSecurityGroup,
     });
-
-    // Remove temporary security group and use the one from ECS construct
-    ecsSecurityGroup.node.tryRemoveChild('Resource');
 
     // Create S3 frontend
     this.frontend = new S3FrontendConstruct(this, 'Frontend', {

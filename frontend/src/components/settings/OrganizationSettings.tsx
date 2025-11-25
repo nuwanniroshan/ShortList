@@ -115,7 +115,7 @@ export function OrganizationSettings() {
   return (
     <Grid container spacing={4}>
       {/* Offices Section */}
-      <Grid item xs={12} md={6}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
           <Typography variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Business /> Offices & Branches
@@ -155,7 +155,7 @@ export function OrganizationSettings() {
       </Grid>
 
       {/* Departments Section */}
-      <Grid item xs={12} md={6}>
+      <Grid size={{ xs: 12, md: 6 }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
           <Typography variant="h6" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Domain /> Departments

@@ -52,10 +52,7 @@ export class RdsConstruct extends Construct {
     // Create RDS instance
     this.instance = new rds.DatabaseInstance(this, 'Database', {
       engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.of(
-          config.rdsConfig.postgresVersion,
-          config.rdsConfig.postgresVersion
-        ),
+        version: rds.PostgresEngineVersion.VER_15,
       }),
       instanceType: ec2.InstanceType.of(
         ec2.InstanceClass.T3,

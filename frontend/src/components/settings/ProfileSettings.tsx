@@ -104,7 +104,7 @@ export function ProfileSettings() {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Full Name"
@@ -112,7 +112,7 @@ export function ProfileSettings() {
             onChange={(e) => setName(e.target.value)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControl fullWidth>
             <InputLabel>Department</InputLabel>
             <Select
@@ -128,7 +128,7 @@ export function ProfileSettings() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControl fullWidth>
             <InputLabel>Office Location</InputLabel>
             <Select
@@ -144,7 +144,7 @@ export function ProfileSettings() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Button
             variant="contained"
             startIcon={<Save />}
