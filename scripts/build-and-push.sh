@@ -3,7 +3,19 @@
 # Build and push Docker image to ECR
 # Usage: ./build-and-push.sh [dev|qa|prod]
 
-set -e
+set -euo pipefail
+
+# Ensure required commands are available
+check_prereqs() {
+  for cmd in aws npm docker; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+      echo "❌ Error: $cmd is not installed. Please install it before proceeding."
+      exit 1
+    fi
+  done
+}
+
+check_prereqs
 
 ENVIRONMENT=${1:-dev}
 AWS_REGION=${AWS_REGION:-us-east-1}
@@ -20,6 +32,12 @@ fi
 # ECR repository name
 ECR_REPO="shortlist-backend-$ENVIRONMENT"
 ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO"
+
+# Ensure ECR repository exists
+if ! aws ecr describe-repositories --repository-names "$ECR_REPO" --region "$AWS_REGION" >/dev/null 2>&1; then
+  echo "📦 Creating ECR repository $ECR_REPO..."
+  aws ecr create-repository --repository-name "$ECR_REPO" --region "$AWS_REGION"
+fi
 
 echo "📦 Repository: $ECR_URI"
 

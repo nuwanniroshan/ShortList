@@ -3,7 +3,19 @@
 # Run data migration from local to AWS
 # Usage: ./run-migration.sh [dev|qa|prod]
 
-set -e
+set -euo pipefail
+
+# Ensure required commands are available
+check_prereqs() {
+  for cmd in aws npm npx; do
+    if ! command -v $cmd >/dev/null 2>&1; then
+      echo "❌ Error: $cmd is not installed. Please install it before proceeding."
+      exit 1
+    fi
+  done
+}
+
+check_prereqs
 
 ENVIRONMENT=${1:-dev}
 AWS_REGION=${AWS_REGION:-us-east-1}

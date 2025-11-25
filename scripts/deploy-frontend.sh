@@ -3,7 +3,10 @@
 # Deploy frontend to S3
 # Usage: ./deploy-frontend.sh [dev|qa|prod] [ALB_URL]
 
-set -e
+set -euo pipefail
+
+# Ensure temporary env file is removed on exit
+trap "rm -f .env.production" EXIT
 
 ENVIRONMENT=${1:-dev}
 ALB_URL=$2
@@ -77,7 +80,19 @@ echo "📦 Bucket: $BUCKET_NAME"
 
 # Upload to S3
 echo "⬆️  Uploading to S3..."
-aws s3 sync dist/ s3://$BUCKET_NAME --delete --region $AWS_REGION
+max_attempts=2
+attempt=1
+while true; do
+  if aws s3 sync dist/ s3://$BUCKET_NAME --delete --region $AWS_REGION; then
+    break
+  fi
+  if [ $attempt -ge $max_attempts ]; then
+    echo "❌ S3 sync failed after $max_attempts attempts."
+    exit 1
+  fi
+  echo "⚠️  Retry S3 sync (attempt $((attempt+1)))..."
+  attempt=$((attempt+1))
+done
 
 # Invalidate CloudFront cache for prod
 if [ "$ENVIRONMENT" == "prod" ]; then
